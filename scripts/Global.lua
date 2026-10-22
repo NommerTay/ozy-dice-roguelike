@@ -39,19 +39,59 @@ local POOL_LABEL = {
     misses = "Miss", attacks = "Attack", defends = "Defend", statuses = "Status",
 }
 
--- Decal placement for the 6 values of a standard TTS Die_6.
+-- Face frames for the 6 values of a standard TTS Die_6.
 -- Index = die value (what getValue() returns when that face is on top).
--- position is just outside that face; rotation orients the icon upright
--- when viewed from that side. Tune these once on your own table/model -
--- custom dice meshes differ, and this table is the only place to fix it.
-local FACE_TRANSFORMS = {
-    [1] = { position = { 0,     0.51,  0    }, rotation = { 0,   0,   0   } }, -- top
-    [6] = { position = { 0,    -0.51,  0    }, rotation = { 180, 0,   0   } }, -- bottom (opp. 1)
-    [2] = { position = { 0,     0,     0.51 }, rotation = { 90,  0,   0   } }, -- front
-    [5] = { position = { 0,     0,    -0.51 }, rotation = { 270, 0,   180 } }, -- back   (opp. 2)
-    [3] = { position = { 0.51,  0,     0    }, rotation = { 0,   0,   270 } }, -- right
-    [4] = { position = {-0.51,  0,     0    }, rotation = { 0,   0,   90  } }, -- left   (opp. 3)
+-- `normal` points out of that face; `rotation` orients a decal plane to
+-- lie flat on the face, facing outward (a decal's default plane faces
+-- +Z, so the top face needs rotation {90,0,0} to face +Y, etc.).
+--
+-- Why not TTS "Custom Dice"? A custom die takes ONE pre-composed texture
+-- image (a template with all 6 faces baked in). Our faces are drafted at
+-- click-time, and Lua inside TTS cannot composite images - that would
+-- need a live image server. Decals are the runtime way to skin a die.
+--
+-- V2 calibration note: V1 hard-coded positions for a 1-unit die and the
+-- decals exploded out around it (Ben's screenshot, 2026-10-22). The
+-- built-in Die_6 mesh is much smaller than 1 unit, so placement is now
+-- measured from the die's own bounds at runtime (applyFaceDecals below).
+local FACE_FRAMES = {
+    [1] = { normal = { 0,  1,  0 }, rotation = { 90,  0,   0   } }, -- top
+    [6] = { normal = { 0, -1,  0 }, rotation = { -90, 0,   0   } }, -- bottom (opp. 1)
+    [2] = { normal = { 0,  0,  1 }, rotation = { 0,   0,   0   } }, -- front
+    [5] = { normal = { 0,  0, -1 }, rotation = { 0,   180, 0   } }, -- back   (opp. 2)
+    [3] = { normal = { 1,  0,  0 }, rotation = { 0,   90,  0   } }, -- right
+    [4] = { normal = { -1, 0,  0 }, rotation = { 0,   270, 0   } }, -- left   (opp. 3)
 }
+
+-- Paint the 6 drafted faces onto a spawned die as decals, sized from
+-- the die's own measured bounds so this works whatever scale it is.
+local function applyFaceDecals(die, faces)
+    local bounds = die.getBoundsNormalized()  -- world size, rotation ignored
+    local scale  = die.getScale()
+    -- Convert world size into the die's local units (decals live in
+    -- local space): local size = world size / object scale.
+    local localSize = bounds.x / math.max(scale.x, 0.01)
+    local half = localSize / 2
+
+    for value, face in ipairs(faces) do
+        local f = FACE_FRAMES[value]
+        die.addDecal({
+            name = face.id,
+            url = face.icon_url,
+            position = {
+                f.normal[1] * (half + 0.02),
+                f.normal[2] * (half + 0.02),
+                f.normal[3] * (half + 0.02),
+            },
+            rotation = f.rotation,
+            scale = localSize * 0.96,
+        })
+    end
+
+    log(string.format(
+        "[CozyDice] Die bounds %.2f, local size %.2f - decals applied.",
+        bounds.x, localSize))
+end
 
 local FaceDatabase = nil   -- filled by the GitHub download, or the fallback
 local BuiltDice    = {}    -- guid -> { faces = {...}, owner = color }
@@ -240,7 +280,7 @@ function buildCustomDie(player)
         type = "Die_6",
         position = spawnPos,
         rotation = { 0, math.random(360), 0 },
-        scale = { 1, 1, 1 },
+        scale = { 1.5, 1.5, 1.5 },  -- chunkier die, so the face icons read well
         sound = true,
         callback_function = function(die)
             -- faces[i] is the face that reads as value i once at rest.
@@ -249,16 +289,7 @@ function buildCustomDie(player)
             die.setGMNotes(JSON.encode(faces))
             die.setColorTint({ 1, 0.99, 0.95 })
 
-            for value, face in ipairs(faces) do
-                local t = FACE_TRANSFORMS[value]
-                die.addDecal({
-                    name = face.id,
-                    url = face.icon_url,
-                    position = t.position,
-                    rotation = t.rotation,
-                    scale = 0.85,
-                })
-            end
+            applyFaceDecals(die, faces)
 
             BuiltDice[die.getGUID()] = { faces = faces, owner = player.color,
                                          ownerName = playerDisplayName(player) }

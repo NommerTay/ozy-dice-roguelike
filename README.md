@@ -56,5 +56,5 @@ No GitHub access / bad URL? The button still works — `Global.lua` falls back t
 
 ## Known prototype notes
 
-- Face **decals** use the placement table at the top of `Global.lua` (`FACE_TRANSFORMS`), tuned for a standard `Die_6`. If you swap in a custom die mesh, adjust that one table.
+- Face **decals** are placed from the `FACE_FRAMES` table at the top of `Global.lua`, sized at runtime from the die's measured bounds. (A TTS "Custom Dice" object can't be used for drafted dice: it needs one pre-composed texture image with all 6 faces baked in, and TTS Lua can't composite images at click-time.)
 - This is test #1: build-and-roll only. Drafting between rounds, collecting/trading dice, and status-effect bookkeeping are the next scripts.
