@@ -2,7 +2,10 @@
      Cozy Dice Roguelike - Global UI  (paste into: Modding > Scripting >
      Global > UI tab in Tabletop Simulator)
 
-     One fancy button, bottom-centre of the screen, for every player.
+     Two fancy buttons, bottom-centre of the screen, for every player:
+     "Roll" builds a die; "Player Mat" spawns the Korts player board
+     (a Custom_Tile using korts_player_board.png from the repo root -
+     the mat button is text-only, so it needs no extra UI asset).
 
      BEFORE IT WORKS - one-time setup in TTS:
        1. Games > ... actually: Modding > Custom UI Assets > Add
@@ -11,19 +14,22 @@
        (TTS Global UI images must be registered as Custom UI Assets -
         a bare URL in the <Image> tag will not load.)
 
-     The button calls onRollClicked() in Global.lua.
+     The buttons call onRollClicked() / onMatClicked() in Global.lua.
      ===================================================================== -->
 <Panel
     id="CozyDiceUI"
     rectAlignment="BottomCenter"
     rectOffset="0 28 0 0"
-    width="240"
+    width="520"
     height="92"
     color="#00000000"
     outline="#00000000">
 
+  <HorizontalLayout spacing="12" childForceExpandWidth="false" childForceExpandHeight="false">
     <Button
         id="rollButton"
+        width="240"
+        height="92"
         onClick="onRollClicked"
         colors="#FFF3D6|#FFE3A3|#E8C48A|#B8A88F"
         outline="#3E2723"
@@ -36,5 +42,20 @@
             <Text fontSize="30" fontStyle="Bold" color="#3E2723" alignment="MiddleLeft">Roll</Text>
         </HorizontalLayout>
     </Button>
+
+    <Button
+        id="matButton"
+        width="250"
+        height="92"
+        onClick="onMatClicked"
+        colors="#FFF3D6|#FFE3A3|#E8C48A|#B8A88F"
+        outline="#3E2723"
+        outlineSize="3 3"
+        cornerRadius="18"
+        fontSize="30"
+        textColor="#3E2723">
+        <Text fontSize="30" fontStyle="Bold" color="#3E2723" alignment="MiddleCenter">Player Mat</Text>
+    </Button>
+  </HorizontalLayout>
 
 </Panel>

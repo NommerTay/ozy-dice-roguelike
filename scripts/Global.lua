@@ -21,6 +21,11 @@
 --      The catalog of dice lives in data/dice_catalog.json.
 --   3. When the die comes to rest, the top face (die value 1-6) is
 --      looked up in that stored list and its effect is broadcast.
+--   4. The second button, "Player Mat", spawns the Korts player board
+--      for the clicking player as a real TTS "Custom_Tile" (a flat
+--      rectangular tile) with the board art from this repo
+--      (korts_player_board.png in the repo root). One mat per player:
+--      clicking again replaces that player's old mat.
 -- =====================================================================
 
 -- Asset/database base URL for this repo (change only if you fork/rename it).
@@ -28,6 +33,7 @@ local GITHUB_RAW_BASE =
     "https://raw.githubusercontent.com/NommerTay/ozy-dice-roguelike/main/"
 local DATABASE_URL = GITHUB_RAW_BASE .. "data/face_database.json"
 local CATALOG_URL  = GITHUB_RAW_BASE .. "data/dice_catalog.json"
+local BOARD_IMAGE_URL = GITHUB_RAW_BASE .. "korts_player_board.png"
 
 local POOL_LABEL = {
     misses = "Miss", attacks = "Attack", defends = "Defend", statuses = "Status",
@@ -44,6 +50,7 @@ local POOL_LABEL = {
 local FaceDatabase = nil   -- filled by the GitHub download, or the fallback
 local DiceCatalog  = nil   -- filled by the GitHub download, or the fallback
 local BuiltDice    = {}    -- guid -> { faces = {...}, owner = color }
+local SpawnedMats  = {}    -- player color -> guid of their current mat
 
 -- ---------------------------------------------------------------------
 -- Loading
@@ -254,6 +261,59 @@ end
 
 
 -- ---------------------------------------------------------------------
+-- The Player Mat button (called from UI.xml: onClick="onMatClicked")
+-- ---------------------------------------------------------------------
+function onMatClicked(player, _, _)
+    spawnPlayerMat(player)
+end
+
+function spawnPlayerMat(player)
+    -- One mat per player: replace their old mat instead of piling up.
+    local oldGuid = SpawnedMats[player.color]
+    if oldGuid then
+        local old = getObjectFromGUID(oldGuid)
+        if old then old.destruct() end
+        SpawnedMats[player.color] = nil
+    end
+
+    -- Spawn spot: same place the dice use, but down on the table -
+    -- getSpawnPosition aims 3 units up for tossing dice.
+    local pos = getSpawnPosition(player)
+    local matPos = { pos[1], 2, pos[3] }
+
+    -- A genuine TTS "Custom_Tile" (the custom tile item type), using
+    -- the same documented pattern as the dice: spawnObject with the
+    -- custom type name, then setCustomObject with the image.
+    -- Tile type 0 = rectangle. The board art is 1920x1280 (3:2) and a
+    -- custom tile's footprint is square at scale 1, so an x:z scale of
+    -- 3:2 keeps the art undistorted. To resize the mat, change
+    -- MAT_SCALE - keep the 3:2 ratio.
+    local MAT_SCALE = { 6, 1, 4 }
+    local mat = spawnObject({
+        type = "Custom_Tile",
+        position = matPos,
+        rotation = { 0, 0, 0 },
+        scale = MAT_SCALE,
+        sound = true,
+        callback_function = function(spawned)
+            spawned.setName("Korts Player Mat - " .. playerDisplayName(player))
+            spawned.setDescription("The Korts player board: faction info, " ..
+                "starting dice, and the mine's active dice, treasures " ..
+                "and artifacts.")
+            SpawnedMats[player.color] = spawned.getGUID()
+        end,
+    })
+    if mat then
+        mat.setCustomObject({
+            image = BOARD_IMAGE_URL,
+            type = 0,          -- 0 = rectangle tile
+            stackable = false,
+        })
+    end
+end
+
+
+-- ---------------------------------------------------------------------
 -- Resolving a roll: when one of our built dice stops, announce the
 -- face on top. getValue() -> index into the stored face list.
 -- ---------------------------------------------------------------------
@@ -278,6 +338,9 @@ end
 -- Tidy up tracking when a built die is destroyed / put away.
 function onObjectDestroy(object)
     BuiltDice[object.getGUID()] = nil
+    for color, guid in pairs(SpawnedMats) do
+        if guid == object.getGUID() then SpawnedMats[color] = nil end
+    end
 end
 
 -- =====================================================================
