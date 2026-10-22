@@ -7,7 +7,7 @@
      BEFORE IT WORKS - one-time setup in TTS:
        1. Games > ... actually: Modding > Custom UI Assets > Add
        2. Name it exactly:  CozyRollButton
-          URL:  https://raw.githubusercontent.com/NommerTay/ozy-dice-roguelike/main/assets/icons/roll_button.png
+          URL:  https://raw.githubusercontent.com/NommerTay/ozy-dice-roguelike/main/roll_button.png
        (TTS Global UI images must be registered as Custom UI Assets -
         a bare URL in the <Image> tag will not load.)
 

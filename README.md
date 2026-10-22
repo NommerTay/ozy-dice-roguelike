@@ -20,15 +20,19 @@ All 20 face icons + the Roll button icon are cozy pixel art on one shared palett
 ## Repo layout
 
 ```
-assets/icons/            <- the actual visual assets TTS loads from GitHub
-  roll_button.png
-  misses/  attacks/  defends/  statuses/   (5 PNGs each, 256x256)
-data/face_database.json  <- THE database: pools, names, values, effects, icon paths
+*.png (repo root)        <- the actual visual assets TTS loads from GitHub:
+  roll_button.png          the Roll button icon
+  miss_*.png               5 Miss faces    attack_*.png   5 Attack faces
+  defend_*.png             5 Defend faces  status_*.png   5 Status faces
+  preview_contact_sheet.png  all 21 icons on one sheet
+data/face_database.json  <- THE database: pools, names, values, effects, icon filenames
 scripts/
   Global.lua             <- paste into TTS: Modding > Scripting > Global (Lua)
   UI.xml                 <- paste into TTS: Modding > Scripting > Global (UI)
   CustomDie.lua          <- optional: script for a template-die pattern
-tools/generate_icons.py  <- regenerates every icon (python3, needs Pillow)
+tools/generate_icons.py  <- regenerates every icon (python3, needs Pillow;
+                            locally it writes them under assets/icons/ -
+                            upload the PNGs themselves to the repo root)
 ```
 
 ## Set it up in Tabletop Simulator
@@ -38,7 +42,7 @@ tools/generate_icons.py  <- regenerates every icon (python3, needs Pillow)
 3. In TTS, open your table/save:
    - **Modding → Scripting → Global → Lua:** paste `scripts/Global.lua`
    - **Modding → Scripting → Global → UI:** paste `scripts/UI.xml`
-   - **Modding → Custom UI Assets → Add:** name it exactly `CozyRollButton`, URL = `…/assets/icons/roll_button.png` from your repo (Global UI images must be registered here — a raw URL in the XML won't load).
+   - **Modding → Custom UI Assets → Add:** name it exactly `CozyRollButton`, URL = `https://raw.githubusercontent.com/NommerTay/ozy-dice-roguelike/main/roll_button.png` (Global UI images must be registered here — a raw URL in the XML won't load).
 4. Click **Save & Play**. A cream **🎲 Roll** button sits at the bottom-centre of everyone's screen.
 5. Click it: the script downloads `data/face_database.json` from GitHub, drafts a composition, spawns your die in front of you with the six face icons as decals, stores the faces in the die's GM Notes + description, rolls it, and broadcasts the top face's effect when it settles.
 
@@ -46,8 +50,8 @@ No GitHub access / bad URL? The button still works — `Global.lua` falls back t
 
 ## Adding a new face (the drafting/collecting loop)
 
-1. Draw it in style: add a function to `tools/generate_icons.py`, run it, commit the PNG.
-2. Add one entry to that pool in `data/face_database.json` (id, name, value, effect, icon path).
+1. Draw it in style: add a function to `tools/generate_icons.py`, run it, upload the new PNG to the repo root.
+2. Add one entry to that pool in `data/face_database.json` (id, name, value, effect, icon filename).
 3. Done — no Lua change. Every table loads the new pool next time it starts.
 
 ## Known prototype notes
