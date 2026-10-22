@@ -24,7 +24,7 @@
 --   4. The second button, "Player Mat", spawns the Korts player board
 --      for the clicking player as a real TTS "Custom_Tile" (a flat
 --      rectangular tile) with the board art from this repo
---      (korts_player_board.png in the repo root). One mat per player:
+--      (the board PNG in the repo root). One mat per player:
 --      clicking again replaces that player's old mat.
 -- =====================================================================
 
@@ -33,7 +33,14 @@ local GITHUB_RAW_BASE =
     "https://raw.githubusercontent.com/NommerTay/ozy-dice-roguelike/main/"
 local DATABASE_URL = GITHUB_RAW_BASE .. "data/face_database.json"
 local CATALOG_URL  = GITHUB_RAW_BASE .. "data/dice_catalog.json"
-local BOARD_IMAGE_URL = GITHUB_RAW_BASE .. "korts_player_board.png"
+-- NOTE: the board file in the repo root is currently named
+-- "Korts player board for upload.png" (that is the name it was
+-- uploaded under), so spaces are URL-encoded as %20 here. If the
+-- file is ever renamed on GitHub, change this line to match -
+-- a wrong name makes TTS report "Load Image failed" and spawn a
+-- blank white tile.
+local BOARD_IMAGE_URL = GITHUB_RAW_BASE ..
+    "Korts%20player%20board%20for%20upload.png"
 
 local POOL_LABEL = {
     misses = "Miss", attacks = "Attack", defends = "Defend", statuses = "Status",
