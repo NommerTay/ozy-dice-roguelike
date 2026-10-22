@@ -291,11 +291,12 @@ function spawnPlayerMat(player)
     -- A genuine TTS "Custom_Tile" (the custom tile item type), using
     -- the same documented pattern as the dice: spawnObject with the
     -- custom type name, then setCustomObject with the image.
-    -- Tile type 0 = rectangle. The board art is 1920x1280 (3:2) and a
-    -- custom tile's footprint is square at scale 1, so an x:z scale of
-    -- 3:2 keeps the art undistorted. To resize the mat, change
-    -- MAT_SCALE - keep the 3:2 ratio.
-    local MAT_SCALE = { 6, 1, 4 }
+    -- Tile type 0 = rectangle. The board PNG is the shaped board
+    -- cropped tight (4096x3487, ~1.18:1) with the backdrop knocked
+    -- out to transparency, and a custom tile's footprint is square at
+    -- scale 1, so an x:z scale of ~1.18 keeps the art undistorted.
+    -- To resize the mat, change MAT_SCALE - keep the ~1.18 ratio.
+    local MAT_SCALE = { 7.05, 1, 6 }
     local mat = spawnObject({
         type = "Custom_Tile",
         position = matPos,
