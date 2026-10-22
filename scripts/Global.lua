@@ -161,6 +161,63 @@ local function tintForPool(pool)
     return { 0.75, 0.75, 0.75 }  -- misses: soft grey, no drama
 end
 
+-- ---------------------------------------------------------------------
+-- Helpers for finding the player / a spawn spot.
+-- NOTE (fixed after Ben's first in-TTS test): Player.getPlayerHandTransform
+-- does not exist in current TTS - calling it threw
+-- "can't access field getPlayerHandTransform of userdataLuaPlayer".
+-- The hand-transform call differs between TTS versions, so every method
+-- is tried inside pcall and ANY failure falls back safely instead of
+-- killing the whole Roll click.
+-- ---------------------------------------------------------------------
+local function playerDisplayName(player)
+    local ok, name = pcall(function()
+        local p = Player[player.color]
+        return p and p.steam_name
+    end)
+    if ok and name and name ~= "" then return name end
+    return player.color
+end
+
+local SEAT_ORDER = { "White", "Brown", "Red", "Orange", "Yellow", "Green",
+                     "Teal", "Blue", "Purple", "Pink", "Grey", "Black" }
+
+local function getSpawnPosition(player)
+    local p = Player[player.color]
+
+    -- Try the known hand-transform spellings for this TTS version.
+    local ok, pos = pcall(function()
+        local t = nil
+        if p.getHandTransform then t = p.getHandTransform()
+        elseif p.getPlayerHandTransform then t = p.getPlayerHandTransform() end
+        if t and t.position then
+            return { t.position.x, t.position.y + 3, t.position.z }
+        end
+        return nil
+    end)
+    if ok and pos then return pos end
+
+    -- Next best: above the first object sitting in the player's hand.
+    local ok2, pos2 = pcall(function()
+        local hand = p.getHandObjects(1)
+        if hand and hand[1] then
+            local hp = hand[1].getPosition()
+            return { hp.x, hp.y + 3, hp.z }
+        end
+        return nil
+    end)
+    if ok2 and pos2 then return pos2 end
+
+    -- Fallback: a ring around the table centre, one slot per seat colour,
+    -- so different players' dice don't all land in the same spot.
+    local slot = 1
+    for i, color in ipairs(SEAT_ORDER) do
+        if color == player.color then slot = i break end
+    end
+    local angle = math.rad((slot - 1) * (360 / #SEAT_ORDER))
+    return { 6 * math.sin(angle), 3, 6 * math.cos(angle) }
+end
+
 function buildCustomDie(player)
     local counts = rollComposition()
 
@@ -172,11 +229,7 @@ function buildCustomDie(player)
     end
     shuffle(faces)  -- so pool order doesn't predict which value lands where
 
-    -- Spawn in front of the clicking player, over their player mat area.
-    local playerPos = Player[player.color].getPlayerHandTransform()
-    local spawnPos = playerPos and
-        { playerPos.position.x, playerPos.position.y + 3, playerPos.position.z }
-        or { 0, 3, 0 }
+    local spawnPos = getSpawnPosition(player)
 
     broadcastToColor(string.format(
         "Building your die: %d Miss / %d Attack / %d Defend / %d Status",
@@ -191,7 +244,7 @@ function buildCustomDie(player)
         sound = true,
         callback_function = function(die)
             -- faces[i] is the face that reads as value i once at rest.
-            die.setName("Cozy Die - " .. Player[player.color].steam_name)
+            die.setName("Cozy Die - " .. playerDisplayName(player))
             die.setDescription(describeFaces(faces))
             die.setGMNotes(JSON.encode(faces))
             die.setColorTint({ 1, 0.99, 0.95 })
@@ -207,7 +260,8 @@ function buildCustomDie(player)
                 })
             end
 
-            BuiltDice[die.getGUID()] = { faces = faces, owner = player.color }
+            BuiltDice[die.getGUID()] = { faces = faces, owner = player.color,
+                                         ownerName = playerDisplayName(player) }
             die.randomize(player.color)
         end,
     })
@@ -227,7 +281,7 @@ function onObjectRandomize(object, playerColor)
         local face = record.faces[value]
         if not face then return end
         broadcastToAll(string.format("%s rolled %s [%s] - %s",
-            Player[record.owner].steam_name, face.name,
+            record.ownerName or record.owner, face.name,
             POOL_LABEL[face.pool], face.effect),
             tintForPool(face.pool))
     end, function()
