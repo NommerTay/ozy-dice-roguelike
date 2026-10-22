@@ -26,9 +26,10 @@ The 27 face icons are cozy pixel art: master artworks (generated in Canva and wi
   defend_*.png             5 Defend faces  status_*.png   5 Status faces
   preview_contact_sheet.png  all 21 icons on one sheet
   dice_01.png … dice_13.png  baked Custom Dice textures (one per legal composition)
-  Korts player board for upload.png
-                           the Korts player board art (spawned by the Player Mat
-                           button; Global.lua URL-encodes its spaces as %20)
+  korts_board.png          the Korts player board art (spawned by the Player Mat
+                           button; fully opaque - its backdrop is the scenery
+                           extended outward, because TTS tiles flatten
+                           transparency to grey)
 data/face_database.json  <- THE database: pools, names, values, effects, icon filenames
 data/dice_catalog.json   <- the dice pool: per die, its texture + face ids by die value
 scripts/
@@ -53,7 +54,7 @@ tools/generate_dice_textures.py
    - **Modding → Custom UI Assets → Add:** name it exactly `CozyRollButton`, URL = `https://raw.githubusercontent.com/NommerTay/ozy-dice-roguelike/main/roll_button.png` (Global UI images must be registered here — a raw URL in the XML won't load).
 4. Click **Save & Play**. Two cream buttons sit at the bottom-centre of everyone's screen: **🎲 Roll** and **Player Mat**.
 5. Click **Roll**: the script downloads `data/face_database.json` and `data/dice_catalog.json` from GitHub, picks one of the pre-made dice at random, spawns it as a real **Custom Dice** object with its baked texture, stores the faces in the die's GM Notes + description, rolls it, and broadcasts the top face's effect when it settles.
-6. Click **Player Mat**: the script spawns the Korts player board as a real **Custom Tile** (flat rectangle; the PNG is the shaped board cropped tight at 4096×3487 with a transparent backdrop, ~1.18:1) in front of you, using the board PNG from the repo root. One mat per player — clicking again replaces your old mat. Move/rotate it like any tile; resize via `MAT_SCALE` in `Global.lua`.
+6. Click **Player Mat**: the script spawns the Korts player board as a real **Custom Tile** (flat rectangle; the PNG is the board cropped tight at 4096×3487, ~1.18:1, backdrop painted in from the scenery) in front of you, using the board PNG from the repo root. One mat per player — clicking again replaces your old mat. Move/rotate it like any tile; resize via `MAT_SCALE` in `Global.lua`.
 
 No GitHub access / bad URL? The button still works — `Global.lua` falls back to a small embedded copy of the database (and says so in the log).
 

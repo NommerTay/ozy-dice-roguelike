@@ -33,14 +33,12 @@ local GITHUB_RAW_BASE =
     "https://raw.githubusercontent.com/NommerTay/ozy-dice-roguelike/main/"
 local DATABASE_URL = GITHUB_RAW_BASE .. "data/face_database.json"
 local CATALOG_URL  = GITHUB_RAW_BASE .. "data/dice_catalog.json"
--- NOTE: the board file in the repo root is currently named
--- "Korts player board for upload.png" (that is the name it was
--- uploaded under), so spaces are URL-encoded as %20 here. If the
--- file is ever renamed on GitHub, change this line to match -
--- a wrong name makes TTS report "Load Image failed" and spawn a
--- blank white tile.
-local BOARD_IMAGE_URL = GITHUB_RAW_BASE ..
-    "Korts%20player%20board%20for%20upload.png"
+-- NOTE: this must match the board file's name in the repo root
+-- EXACTLY - a wrong name makes TTS report "Load Image failed" and
+-- spawn a blank white tile. The PNG is fully opaque on purpose:
+-- TTS tiles flatten transparency to grey, so the board's backdrop
+-- is painted in (the scenery extended outward) instead of alpha.
+local BOARD_IMAGE_URL = GITHUB_RAW_BASE .. "korts_board.png"
 
 local POOL_LABEL = {
     misses = "Miss", attacks = "Attack", defends = "Defend", statuses = "Status",
