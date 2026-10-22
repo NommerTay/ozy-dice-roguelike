@@ -260,7 +260,7 @@ function buildCustomDie(player)
     local die = spawnObject({
         type = "Custom_Dice",
         position = spawnPos,
-        rotation = { 0, math.random(360), 0 },
+        rotation = { 0, yaw, 0 },
         scale = { 1.4, 1.4, 1.4 },  -- chunkier die, so the face icons read well
         sound = true,
         callback_function = function(spawned)
@@ -277,6 +277,18 @@ function buildCustomDie(player)
             image = GITHUB_RAW_BASE .. dieDef.texture,
             type = 1,  -- 1 = six-sided
         })
+        -- Final snap once the custom-object reload has settled:
+        -- dice were arriving tilted (the spawn drop + reload could
+        -- leave one resting on an edge), so put it back exactly on
+        -- the slot, flat, a moment later.
+        local dieGuid = die.getGUID()
+        Wait.time(function()
+            local d = getObjectFromGUID(dieGuid)
+            if d then
+                d.setRotation({ 0, yaw, 0 })
+                d.setPosition(worldPos)
+            end
+        end, 0.35)
     end
 end
 
@@ -575,15 +587,26 @@ function spawnStartingDie(params)
 
     -- The slot's world position, via the mat's own transform (so this
     -- still lands on the slot if the mat has been moved or rotated).
+    -- NOTE the mirrored X: buttons are placed in the tile's UI frame,
+    -- but positionToWorld uses the tile's raw transform, whose X
+    -- axis runs opposite the texture (confirmed in TTS: with the
+    -- un-mirrored formula the dice landed on the mat's right side
+    -- while the buttons sat correctly on the left). The Y is taken
+    -- from the bounds in world space (mat top + half the die), not
+    -- from the transform, so the die starts exactly at rest height.
     local bounds = mat.getBoundsNormalized()
     local scale = mat.getScale()
-    local localPos = {
-        (def.u - 0.5) * (bounds.size.x / scale.x),
-        (bounds.size.y / scale.y) / 2
-            + (STARTING_DIE_SCALE / 2) / scale.y + 0.03,
+    local pin = mat.positionToWorld({
+        (0.5 - def.u) * (bounds.size.x / scale.x),
+        (bounds.size.y / scale.y) / 2,
         (def.v - 0.5) * (bounds.size.z / scale.z),
+    })
+    local worldPos = {
+        x = pin.x, z = pin.z,
+        y = bounds.center.y + bounds.size.y / 2
+            + STARTING_DIE_SCALE / 2 + 0.01,
     }
-    local worldPos = mat.positionToWorld(localPos)
+    local yaw = math.random(360)
 
     local ownerName = playerDisplayName({ color = params.player })
     local dieName = dieDef.label
@@ -592,7 +615,7 @@ function spawnStartingDie(params)
     local die = spawnObject({
         type = "Custom_Dice",
         position = worldPos,
-        rotation = { 0, math.random(360), 0 },
+        rotation = { 0, yaw, 0 },
         scale = { STARTING_DIE_SCALE, STARTING_DIE_SCALE, STARTING_DIE_SCALE },
         sound = true,
         callback_function = function(spawned)
@@ -609,6 +632,18 @@ function spawnStartingDie(params)
             image = GITHUB_RAW_BASE .. dieDef.texture,
             type = 1,  -- 1 = six-sided
         })
+        -- Final snap once the custom-object reload has settled:
+        -- dice were arriving tilted (the spawn drop + reload could
+        -- leave one resting on an edge), so put it back exactly on
+        -- the slot, flat, a moment later.
+        local dieGuid = die.getGUID()
+        Wait.time(function()
+            local d = getObjectFromGUID(dieGuid)
+            if d then
+                d.setRotation({ 0, yaw, 0 })
+                d.setPosition(worldPos)
+            end
+        end, 0.35)
     end
 end
 
