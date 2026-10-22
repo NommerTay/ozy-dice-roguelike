@@ -53,7 +53,7 @@ local BOARD_IMAGE_URL = GITHUB_RAW_BASE .. "korts_board.png"
 
 local POOL_LABEL = {
     misses = "Miss", attacks = "Attack", defends = "Defend",
-    statuses = "Status", event = "Event",
+    statuses = "Status", event = "Event", faction = "Faction",
 }
 
 -- A Custom_Dice spawned with type=1 gets standard d6 rotation values
@@ -433,8 +433,8 @@ local STARTING_SLOTS = {
     { id = "event_3",  u = 0.28809, v = 0.76226, die = "event_con", label = "Event - CON" },
     { id = "event_4",  u = 0.31665, v = 0.76226, die = "event_con", label = "Event - CON" },
     { id = "event_5",  u = 0.34521, v = 0.76226, die = "event_str", label = "Event - STR" },
-    { id = "faction_1", u = 0.27051, v = 0.82306, label = "Faction - Drunkard's Resilience" },
-    { id = "faction_2", u = 0.30615, v = 0.82306, label = "Faction - Hard Labor" },
+    { id = "faction_1", u = 0.27051, v = 0.82306, die = "faction_resilience", label = "Faction - Drunkard's Resilience" },
+    { id = "faction_2", u = 0.30615, v = 0.82306, die = "faction_labor", label = "Faction - Hard Labor" },
 }
 local STARTING_SLOTS_BY_ID = {}
 for _, def in ipairs(STARTING_SLOTS) do STARTING_SLOTS_BY_ID[def.id] = def end
@@ -521,6 +521,20 @@ end
 -- 3x one-dot, 2x blank and 1x two-dot sides. Face lists are in
 -- die-value order (index 1 = value 1 ... index 6 = value 6) and
 -- match tools/build_starting_dice.py exactly.
+-- Faction die faces in value order: counts 1, 1, 2, 3, 2, 1
+-- icons (matches tools/build_starting_dice.py FACTION_LAYOUT).
+local function factionFaces(ability, unit, effect)
+    local words = { "One", "Two", "Three" }
+    local function face(n)
+        return {
+            id = "faction_" .. string.lower(unit) .. "_" .. n,
+            name = words[n] .. " " .. (n == 1 and unit or unit .. "s"),
+            pool = "faction", value = n, effect = effect,
+        }
+    end
+    return { face(1), face(1), face(2), face(3), face(2), face(1) }
+end
+
 local STARTING_DICE_DEFS = {
     combat = {
         label = "Starting Combat Die",
@@ -530,6 +544,18 @@ local STARTING_DICE_DEFS = {
     event_dex = { label = "Starting Event Die - DEX", texture = "starting_event_dex.png", stat = "DEX" },
     event_con = { label = "Starting Event Die - CON", texture = "starting_event_con.png", stat = "CON" },
     event_str = { label = "Starting Event Die - STR", texture = "starting_event_str.png", stat = "STR" },
+    faction_resilience = {
+        label = "Faction Die - Drunkard's Resilience",
+        texture = "starting_faction_resilience.png",
+        faces = factionFaces("Drunkard's Resilience", "Mug",
+            "Drunkard's Resilience: regain health or used dice with the Defend tag."),
+    },
+    faction_labor = {
+        label = "Faction Die - Hard Labor",
+        texture = "starting_faction_labor.png",
+        faces = factionFaces("Hard Labor", "Hammer",
+            "Hard Labor: regain used event dice for a later event phase."),
+    },
 }
 
 -- Spawned starting dice sit ON their printed slot: the slot is
@@ -561,9 +587,8 @@ function spawnStartingDie(params)
     local def = STARTING_SLOTS_BY_ID[params.slot]
     if not mat or not def then return end
     if not def.die then
-        broadcastToColor(def.label .. " - the faction dice are the " ..
-            "next build; this slot is wired and ready for them.",
-            params.player, { 0.95, 0.8, 0.5 })
+        broadcastToColor(def.label .. " - no die is assigned to " ..
+            "this slot yet.", params.player, { 0.95, 0.8, 0.5 })
         return
     end
     if FaceDatabase == nil then
@@ -573,9 +598,14 @@ function spawnStartingDie(params)
     end
 
     local dieDef = STARTING_DICE_DEFS[def.die]
-    local faces = dieDef.faceIds
-        and resolveFaces({ faces = dieDef.faceIds })
-        or eventDieFaces(dieDef.stat)
+    local faces
+    if dieDef.faceIds then
+        faces = resolveFaces({ faces = dieDef.faceIds })
+    elseif dieDef.faces then
+        faces = dieDef.faces
+    else
+        faces = eventDieFaces(dieDef.stat)
+    end
 
     MatSlotDice[params.mat] = MatSlotDice[params.mat] or {}
     local oldGuid = MatSlotDice[params.mat][params.slot]
