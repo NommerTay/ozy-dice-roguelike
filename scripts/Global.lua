@@ -33,22 +33,13 @@ local POOL_LABEL = {
     misses = "Miss", attacks = "Attack", defends = "Defend", statuses = "Status",
 }
 
--- Standard d6 rotation values for a Custom_Dice object: the object
--- rotation at which each value faces up. These tell getValue() which
--- face is on top, and they match the texture layout the textures were
--- composed with (opposites sum to 7: 1=+Z, 2=+Y, 3=-X, 4=+X, 5=-Y,
--- 6=-Z in the die's local space). Verified against real Custom_Dice
--- save files. If a roll ever announces a different face than the icon
--- showing on top, THIS table (or the generator's VALUE_TO_CELL map)
--- is the one place to permute.
-local DICE_ROTATION_VALUES = {
-    { Value = 1, Rotation = { x = -90, y = 0, z = 0    } },
-    { Value = 2, Rotation = { x = 0,   y = 0, z = 0    } },
-    { Value = 3, Rotation = { x = 0,   y = 0, z = -90  } },
-    { Value = 4, Rotation = { x = 0,   y = 0, z = 90   } },
-    { Value = 5, Rotation = { x = 0,   y = 0, z = 180  } },
-    { Value = 6, Rotation = { x = 90,  y = 0, z = 0    } },
-}
+-- A Custom_Dice spawned with type=1 gets standard d6 rotation values
+-- from TTS itself (that is what tells getValue() which face is up).
+-- The dice textures were composed to match those values: in the die's
+-- local space 1=+Z, 2=+Y, 3=-X, 4=+X, 5=-Y, 6=-Z (opposites sum to 7),
+-- derived from real Custom_Dice save files - see VALUE_TO_CELL in
+-- tools/generate_dice_textures.py. If a roll ever announces a different
+-- face than the icon showing on top, that map is the place to permute.
 
 local FaceDatabase = nil   -- filled by the GitHub download, or the fallback
 local DiceCatalog  = nil   -- filled by the GitHub download, or the fallback
@@ -231,45 +222,34 @@ function buildCustomDie(player)
         counts.misses, counts.attacks, counts.defends, counts.statuses),
         player.color, { 1, 0.9, 0.6 })
 
-    -- Spawn a genuine Custom_Dice object (the "custom die" item type),
-    -- with the die's baked texture served from this GitHub repo.
-    spawnObjectData({
-        data = {
-            Name = "Custom_Dice",
-            Nickname = "Cozy Die - " .. playerDisplayName(player),
-            Description = describeFaces(faces),
-            GMNotes = JSON.encode(faces),
-            ColorDiffuse = { r = 1, g = 1, b = 1 },
-            Locked = false,
-            Grid = true,
-            Snap = true,
-            Autoraise = true,
-            Sticky = true,
-            Tooltip = true,
-            DragSelectable = true,
-            MeasureMovement = false,
-            GridProjection = false,
-            HideWhenFaceDown = false,
-            IgnoreFoW = false,
-            Hands = false,
-            CustomImage = {
-                ImageURL = GITHUB_RAW_BASE .. entry.texture,
-                ImageSecondaryURL = "",
-                WidthScale = 0,
-                CustomDice = { Type = 1 },  -- 1 = six-sided
-            },
-            RotationValues = DICE_ROTATION_VALUES,
-        },
+    -- Spawn a genuine Custom_Dice object (the "custom die" item type)
+    -- using the API's documented pattern: spawnObject with the custom
+    -- type name, then setCustomObject with the texture + die type.
+    -- (V3.0 tried spawnObjectData with a hand-built data table; TTS
+    -- rejected it with "failed to load - object reference not set",
+    -- Ben's test 2026-10-22. The data-table route needs fields that
+    -- are only reliably produced by getData() on a real object.)
+    local die = spawnObject({
+        type = "Custom_Dice",
         position = spawnPos,
         rotation = { 0, math.random(360), 0 },
         scale = { 1.4, 1.4, 1.4 },  -- chunkier die, so the face icons read well
         sound = true,
-        callback_function = function(die)
-            BuiltDice[die.getGUID()] = { faces = faces, owner = player.color,
-                                         ownerName = playerDisplayName(player) }
-            die.randomize(player.color)
+        callback_function = function(spawned)
+            spawned.setName("Cozy Die - " .. playerDisplayName(player))
+            spawned.setDescription(describeFaces(faces))
+            spawned.setGMNotes(JSON.encode(faces))
+            BuiltDice[spawned.getGUID()] = { faces = faces, owner = player.color,
+                                             ownerName = playerDisplayName(player) }
+            spawned.randomize(player.color)
         end,
     })
+    if die then
+        die.setCustomObject({
+            image = GITHUB_RAW_BASE .. entry.texture,
+            type = 1,  -- 1 = six-sided
+        })
+    end
 end
 
 
