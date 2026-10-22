@@ -342,6 +342,21 @@ function spawnPlayerMat(player)
                     local mm = getObjectFromGUID(matGuid)
                     if not mm then return end
                     pcall(function() mm.call("setupButtons") end)
+                    pcall(function()
+                        mm.createButton({
+                            click_function = "probeClicked",
+                            function_owner = Global,
+                            label = "TEST",
+                            position = { 0, 3, 0 },
+                            rotation = { 0, 0, 0 },
+                            width = 800, height = 800, font_size = 200,
+                            color = { 1, 0, 0, 0.8 },
+                            hover_color = { 1, 0.3, 0.3, 0.9 },
+                            press_color = { 0.8, 0, 0, 0.9 },
+                            font_color = { 1, 1, 1, 1 },
+                            tooltip = "Probe button",
+                        })
+                    end)
                     local count = 0
                     local okB, btns = pcall(function() return mm.getButtons() end)
                     if okB and btns then count = #btns end
@@ -431,9 +446,14 @@ local SLOTS = {
 local SLOT_W_FRAC = 0.02222
 local SLOT_H_FRAC = 0.02610
 -- DEBUG: zones drawn as visible red squares, raised well above the
--- mat and oversized, so their true position can be seen and reported.
--- Flip to false for the invisible production version once the
--- placement is confirmed in TTS.
+-- mat, so their true position can be seen and reported. Flip to
+-- false for the invisible production version once the placement is
+-- confirmed in TTS. NOTE: createButton width/height are NOT in the
+-- local units position uses - they run ~1000x finer (the API's own
+-- example pairs position {0,1,0} with width 800, font_size 340).
+-- The first builds used local-unit sizes (~0.06), which made the
+-- buttons real but sub-pixel: counted by getButtons, never seen,
+-- never clickable.
 local DEBUG_ZONES = true
 
 function setupButtons()
@@ -452,8 +472,8 @@ function setupButtons()
                          topY + (DEBUG_ZONES and 1.2 or 0.35),
                          (slot.v - 0.5) * nz },
             rotation = { 0, 0, 0 },
-            width = SLOT_W_FRAC * nx * (DEBUG_ZONES and 2.2 or 1.2),
-            height = SLOT_H_FRAC * nz * (DEBUG_ZONES and 2.2 or 1.2),
+            width = SLOT_W_FRAC * nx * (DEBUG_ZONES and 1200 or 1200),
+            height = SLOT_H_FRAC * nz * (DEBUG_ZONES and 1200 or 1200),
             color = DEBUG_ZONES and { 1, 0.25, 0.25, 0.55 }
                 or { 0, 0, 0, 0 },
             hover_color = DEBUG_ZONES and { 1, 0.4, 0.4, 0.75 }
@@ -520,6 +540,14 @@ local function pickCatalogDie(kind, pick)
     end
     table.sort(scored, function(a, b) return a.score > b.score end)
     return scored[math.min(pick or 1, #scored)].entry
+end
+
+-- Brute-force probe (temporary): the backstop hangs one huge red
+-- TEST button over the mat's centre. If it renders, button creation
+-- works and its size calibrates the width/height unit question.
+function probeClicked(_, player_color)
+    broadcastToColor("Probe button clicked - buttons DO work here!",
+        player_color, { 0.75, 0.95, 0.75 })
 end
 
 -- Called from a mat's object script when a Starting Dice slot zone is
