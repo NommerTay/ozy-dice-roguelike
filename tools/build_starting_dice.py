@@ -90,104 +90,109 @@ def event_face(kind, colors):
 # ------------------------------------------------------------------
 # Faction dice: Drunkard's Resilience (mugs) and Hard Labor
 # (hammer arm). Each die has 3x one-icon, 2x two-icon and 1x
-# three-icon sides. The icons are AI masters (kept with the other
-# masters) keyed off their flat backgrounds into sprites, then
-# composed onto parchment faces with a bronze faction rim.
+# three-icon sides. The icons are drawn PROCEDURALLY as simple
+# flat pixel art (Ben: the AI masters were too detailed and did
+# not mesh with the set) on a 64px grid, then composed onto
+# parchment faces with a bronze faction rim.
 # ------------------------------------------------------------------
-import glob as _glob
-from collections import deque
-
-MASTERS_DIR = Path.home() / "workspace" / "cozy-dice-canva-icons"
 FACTION_RIM = (116, 79, 43)
 FACTION_FIELD = (243, 213, 152)
 # counts in die-value order 1..6: three 1s, two 2s, one 3
 FACTION_LAYOUT = [1, 1, 2, 3, 2, 1]
 
-
-def _flood_passable(alpha, seeds_img, color_test):
-    """Flood from the borders through pixels passing color_test;
-    returns a mask of reached pixels."""
-    w, h = seeds_img.size
-    px = seeds_img.load()
-    seen = bytearray(w * h)
-    dq = deque()
-    for x in range(w):
-        for y in (0, h - 1):
-            if color_test(px[x, y]):
-                dq.append((x, y))
-    for y in range(h):
-        for x in (0, w - 1):
-            if color_test(px[x, y]):
-                dq.append((x, y))
-    while dq:
-        x, y = dq.popleft()
-        i = y * w + x
-        if seen[i]:
-            continue
-        seen[i] = 1
-        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx] \
-                    and color_test(px[nx, ny]):
-                dq.append((nx, ny))
-    return seen
+DK = (56, 38, 24, 255)          # dark outline brown
+WOOD = (172, 110, 58, 255)
+WOOD_DK = (140, 84, 40, 255)
+IRON = (72, 64, 60, 255)
+IRON_LT = (150, 142, 132, 255)
+FOAM = (247, 240, 220, 255)
+FOAM_SH = (228, 208, 172, 255)
+SKIN = (208, 138, 92, 255)
+SKIN_DK = (168, 104, 64, 255)
+LEATHER = (122, 79, 45, 255)
+STEEL = (148, 152, 158, 255)
+STEEL_LT = (190, 194, 200, 255)
+HANDLE_WOOD = (150, 96, 50, 255)
 
 
-def make_sprite(pattern):
-    path = sorted(_glob.glob(str(MASTERS_DIR / pattern)))[0]
-    im = Image.open(path).convert("RGB")
-    w, h = im.size
-    px = im.load()
-    corner = px[2, 2]
-    # pass 1: the border-connected background (dark for the mug,
-    # dark teal for the hammer)
-    bg1 = _flood_passable(None, im,
-                          lambda c: sum(abs(c[i] - corner[i]) for i in range(3)) < 110)
-    # pass 2: the hammer master also has a light teal disc BEHIND the
-    # subject - a second island colour. Sample it from a clear disc
-    # spot (left-middle, away from the arm) and flood again, treating
-    # already-keyed pixels as passable.
-    import numpy as np
-    arr = np.array(im).astype(int)
-    alpha = np.where(np.array(bg1, dtype=bool).reshape(h, w), 0, 255).astype(np.uint8)
-    disc = tuple(arr[int(h * 0.5), int(w * 0.06)])
-    def disc_test(c):
-        return sum(abs(c[i] - disc[i]) for i in range(3)) < 60
-    passable_img = Image.fromarray(
-        np.where((alpha == 0)[..., None], (0, 0, 0), arr).astype(np.uint8))
-    # flood on a synthetic image: bg-coloured where keyed or disc-like
-    synth = np.array(passable_img)
-    keyed = (alpha == 0)
-    synth[keyed] = corner
-    is_disc = np.zeros((h, w), dtype=bool)
-    for yy in range(h):
-        for xx in range(w):
-            if disc_test(tuple(arr[yy, xx])):
-                is_disc[yy, xx] = True
-    synth_img = Image.fromarray(synth.astype(np.uint8))
-    bg2 = _flood_passable(None, synth_img,
-                          lambda c: sum(abs(c[i] - corner[i]) for i in range(3)) < 110)
-    bg2 = np.array(bg2, dtype=bool).reshape(h, w)
-    newly = bg2 & is_disc
-    alpha[newly] = 0
-    # drop speck components (stray foam dots etc.): keep components
-    # at least 2% the size of the largest
-    from scipy import ndimage
-    lab, n = ndimage.label(alpha > 0)
-    if n > 1:
-        sizes = ndimage.sum(alpha > 0, lab, range(1, n + 1))
-        keep = np.isin(lab, [i + 1 for i, s in enumerate(sizes)
-                              if s >= 0.02 * sizes.max()])
-        alpha = np.where(keep, alpha, 0).astype(np.uint8)
-    sprite = Image.fromarray(
-        np.dstack([arr.astype(np.uint8), alpha]).astype(np.uint8), "RGBA")
-    bbox = sprite.getbbox()
-    sprite = sprite.crop(bbox)
-    # pixel-normalize: down to a 64px grid, back up NEAREST
-    sw, sh = sprite.size
-    grid = 64
-    small = sprite.resize((grid, max(1, round(grid * sh / sw))), Image.LANCZOS)
-    sprite = small.resize((256, max(1, round(256 * sh / sw))), Image.NEAREST)
-    return sprite
+def _poly(d, pts, fill):
+    d.polygon(pts, fill=fill)
+
+
+def mug_sprite():
+    """Simple flat tankard: wood body, two iron bands, foam top."""
+    im = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    # handle (behind body): dark ring with a punched hole
+    d.rounded_rectangle([43, 25, 58, 47], radius=6, fill=DK)
+    d.rounded_rectangle([48, 30, 55, 42], radius=4, fill=(0, 0, 0, 0))
+    # body
+    _poly(d, [(16, 20), (48, 20), (46, 57), (18, 57)], DK)
+    _poly(d, [(18, 22), (46, 22), (44, 55), (20, 55)], WOOD)
+    # plank lines
+    d.line([27, 24, 27, 53], fill=WOOD_DK, width=2)
+    d.line([37, 24, 37, 53], fill=WOOD_DK, width=2)
+    # iron bands + rivets
+    for y0 in (27, 43):
+        d.rectangle([15, y0, 49, y0 + 4], fill=IRON)
+        d.line([15, y0, 49, y0], fill=IRON_LT, width=1)
+        for rx in (22, 32, 42):
+            d.ellipse([rx, y0 + 1, rx + 2, y0 + 3], fill=IRON_LT)
+    # foam: outlined bubbly top + a drip down the left
+    for cx, cy, r in [(24, 15, 7), (33, 11, 8), (42, 15, 7),
+                      (28, 18, 6), (38, 18, 6)]:
+        d.ellipse([cx - r - 1, cy - r - 1, cx + r + 1, cy + r + 1], fill=DK)
+    d.rectangle([17, 16, 47, 22], fill=FOAM)
+    for cx, cy, r in [(24, 15, 7), (33, 11, 8), (42, 15, 7),
+                      (28, 18, 6), (38, 18, 6)]:
+        d.ellipse([cx - r, cy - r + 2, cx + r, cy + r + 2], fill=FOAM_SH)
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=FOAM)
+    d.ellipse([15, 20, 23, 30], fill=DK)
+    d.ellipse([16, 21, 22, 29], fill=FOAM)
+    return im.resize((256, 256), Image.NEAREST)
+
+
+def hammer_sprite():
+    """Simple flat icon: forearm + fist thrusting a hammer up."""
+    im = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    # handle (behind fist and head)
+    d.rectangle([28, 9, 36, 38], fill=DK)
+    d.rectangle([30, 10, 34, 37], fill=HANDLE_WOOD)
+    # hammer head: a chunky sledge block - flat striking caps at
+    # both ends, lighter steel caps, socket where the haft enters
+    d.rectangle([9, 3, 55, 18], fill=DK)
+    d.rectangle([11, 5, 53, 16], fill=STEEL)
+    d.rectangle([11, 5, 17, 16], fill=STEEL_LT)
+    d.rectangle([47, 5, 53, 16], fill=STEEL_LT)
+    d.line([11, 5, 53, 5], fill=STEEL_LT, width=1)
+    d.rectangle([28, 15, 36, 20], fill=DK)
+    # forearm rising from the bottom
+    _poly(d, [(23, 64), (41, 64), (39, 40), (25, 40)], DK)
+    _poly(d, [(25, 64), (39, 64), (37, 42), (27, 42)], SKIN)
+    # leather wrist wrap + studs
+    d.rectangle([26, 47, 38, 53], fill=LEATHER)
+    d.line([26, 47, 38, 47], fill=DK, width=1)
+    for rx in (29, 34):
+        d.ellipse([rx, 49, rx + 2, rx and 51 or 51], fill=IRON_LT)
+    # fist gripping the handle
+    d.rounded_rectangle([19, 25, 45, 43], radius=6, fill=DK)
+    d.rounded_rectangle([21, 27, 43, 41], radius=5, fill=SKIN)
+    d.line([22, 33, 42, 33], fill=SKIN_DK, width=2)
+    d.line([22, 38, 42, 38], fill=SKIN_DK, width=2)
+    # thumb bump on the right of the fist
+    d.ellipse([38, 26, 47, 35], fill=DK)
+    d.ellipse([39, 27, 46, 34], fill=SKIN)
+    return im.resize((256, 256), Image.NEAREST)
+
+
+def build_faction():
+    for sprite, out_name in (
+            (mug_sprite(), "starting_faction_resilience.png"),
+            (hammer_sprite(), "starting_faction_labor.png")):
+        cells = [faction_face(sprite, c) for c in FACTION_LAYOUT]
+        paint(cells).save(ROOT / out_name)
+        print(out_name, FACTION_LAYOUT)
 
 
 def faction_face(sprite, count):
@@ -209,16 +214,6 @@ def faction_face(sprite, count):
         face.paste(spr, (int(fx * CELL - spr.size[0] / 2),
                          int(fy * CELL - spr.size[1] / 2)), spr)
     return face
-
-
-def build_faction():
-    for pattern, out_name in (
-            ("media-generation-faction-mug-*.webp", "starting_faction_resilience.png"),
-            ("media-generation-faction-hammer-*.webp", "starting_faction_labor.png")):
-        sprite = make_sprite(pattern)
-        cells = [faction_face(sprite, c) for c in FACTION_LAYOUT]
-        paint(cells).save(ROOT / out_name)
-        print(out_name, FACTION_LAYOUT)
 
 
 def main():
