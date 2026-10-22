@@ -342,27 +342,40 @@ function spawnPlayerMat(player)
                     local mm = getObjectFromGUID(matGuid)
                     if not mm then return end
                     pcall(function() mm.call("setupButtons") end)
+                    -- Size ladder (temporary calibration): four
+                    -- red squares in a column over the mat, widths
+                    -- 100/200/400/800 button-units, all height 200.
+                    -- Comparing their rendered sizes against the mat
+                    -- in a screenshot pins down the exact
+                    -- button-unit scale.
                     pcall(function()
-                        mm.createButton({
-                            click_function = "probeClicked",
-                            function_owner = Global,
-                            label = "TEST",
-                            position = { 0, 3, 0 },
-                            rotation = { 0, 0, 0 },
-                            width = 800, height = 800, font_size = 200,
-                            color = { 1, 0, 0, 0.8 },
-                            hover_color = { 1, 0.3, 0.3, 0.9 },
-                            press_color = { 0.8, 0, 0, 0.9 },
-                            font_color = { 1, 1, 1, 1 },
-                            tooltip = "Probe button",
-                        })
+                        local widths = { 100, 200, 400, 800 }
+                        for i, w in ipairs(widths) do
+                            mm.createButton({
+                                click_function = "probeClicked",
+                                function_owner = Global,
+                                label = tostring(w),
+                                position = { 0, 1.6 + i * 0.9, 0 },
+                                rotation = { 0, 0, 0 },
+                                width = w, height = 200, font_size = 150,
+                                color = { 1, 0, 0, 0.8 },
+                                hover_color = { 1, 0.3, 0.3, 0.9 },
+                                press_color = { 0.8, 0, 0, 0.9 },
+                                font_color = { 1, 1, 1, 1 },
+                                tooltip = "Probe " .. w,
+                            })
+                        end
                     end)
                     local count = 0
                     local okB, btns = pcall(function() return mm.getButtons() end)
                     if okB and btns then count = #btns end
+                    local bb = mm.getBoundsNormalized()
+                    local ss = mm.getScale()
                     broadcastToColor("Mat check: script " ..
                         (stuck and "stuck" or "had to be re-applied") ..
-                        ", buttons live: " .. count .. " of 12.",
+                        ", buttons live: " .. count .. " of 12, local " ..
+                        string.format("%.2f x %.2f.",
+                            bb.size.x / ss.x, bb.size.z / ss.z),
                         player.color, { 0.75, 0.95, 0.75 })
                 end, 1.5)
             end, 3)
@@ -469,11 +482,11 @@ function setupButtons()
             label = "",
             tooltip = slot.tip,
             position = { (slot.u - 0.5) * nx,
-                         topY + (DEBUG_ZONES and 1.2 or 0.35),
+                         topY + (DEBUG_ZONES and 0.15 or 0.35),
                          (slot.v - 0.5) * nz },
             rotation = { 0, 0, 0 },
-            width = SLOT_W_FRAC * nx * (DEBUG_ZONES and 1200 or 1200),
-            height = SLOT_H_FRAC * nz * (DEBUG_ZONES and 1200 or 1200),
+            width = SLOT_W_FRAC * nx * 600,
+            height = SLOT_H_FRAC * nz * 600,
             color = DEBUG_ZONES and { 1, 0.25, 0.25, 0.55 }
                 or { 0, 0, 0, 0 },
             hover_color = DEBUG_ZONES and { 1, 0.4, 0.4, 0.75 }
