@@ -67,6 +67,9 @@ local DiceCatalog  = nil   -- filled by the GitHub download, or the fallback
 local BuiltDice    = {}    -- guid -> { faces = {...}, owner = color }
 local SpawnedMats  = {}    -- player color -> guid of their current mat
 local MatSlotDice  = {}    -- mat guid -> { slot id -> die guid }
+local buildMatScript  -- forward declaration: defined with the slot
+                      -- system further down (Lua locals are only
+                      -- visible AFTER their declaration line).
 
 -- ---------------------------------------------------------------------
 -- Loading
@@ -431,7 +434,7 @@ end
 %s
 ]==]
 
-local function buildMatScript()
+buildMatScript = function()
     local slotLines, handlerLines = {}, {}
     for _, def in ipairs(STARTING_SLOTS) do
         slotLines[#slotLines + 1] = string.format(
