@@ -45,14 +45,20 @@ CELL = 256
 CANVAS = 768
 
 # die value -> (col, row) on the canvas; row 0 = y256 band, row 1 = y512 band
+# Calibrated empirically in TTS (Ben's number-key test, 2026-10-22):
+# the first derived mapping had values 1, 3 and 5 in each other's cells.
 VALUE_TO_CELL = {
-    1: (2, 0),
+    1: (0, 1),
     2: (0, 0),
-    3: (0, 1),
+    3: (1, 1),
     4: (1, 0),
-    5: (1, 1),
+    5: (2, 0),
     6: (2, 1),
 }
+
+# Icons on values 1 and 6 appeared upside down in TTS (same calibration
+# test), so those two cells are painted rotated 180 degrees.
+VALUE_ROTATION = {1: 180, 6: 180}
 
 POOL_ORDER = ["misses", "attacks", "defends", "statuses"]
 RANGES = {"misses": (1, 2), "attacks": (1, 3), "defends": (1, 3), "statuses": (0, 2)}
@@ -118,6 +124,8 @@ def main():
             icon = Image.open(find_icon(face["icon"])).convert("RGB")
             if icon.size != (CELL, CELL):
                 icon = icon.resize((CELL, CELL), Image.NEAREST)
+            if value in VALUE_ROTATION:
+                icon = icon.rotate(VALUE_ROTATION[value])
             canvas.paste(icon, (col * CELL, 256 + row * CELL))
 
         tex_name = f"dice_{i:02d}.png"
