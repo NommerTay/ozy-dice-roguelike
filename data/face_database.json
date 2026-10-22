@@ -40,6 +40,13 @@
     ],
     "attacks": [
       {
+        "id": "hit",
+        "name": "Hit",
+        "value": 0,
+        "effect": "Succeeds the roll.",
+        "icon": "hit.png"
+      },
+      {
         "id": "hit_1",
         "name": "Hit +1",
         "value": 1,
@@ -90,6 +97,13 @@
       }
     ],
     "defends": [
+      {
+        "id": "block",
+        "name": "Block",
+        "value": 0,
+        "effect": "Ignores one die from the Attack pool targeting you.",
+        "icon": "block.png"
+      },
       {
         "id": "block_1",
         "name": "Block +1",

@@ -27,15 +27,16 @@
 --      (the board PNG in the repo root). One mat per player:
 --      clicking again replaces that player's old mat.
 --   5. Each spawned mat carries a small object script (generated
---      below) that puts an INVISIBLE click zone over every printed
---      Starting Dice slot on the board. Clicking a slot calls back
---      into this Global script (spawnStartingDie), which places the
---      slot's die on that exact spot on the mat: combat slots pick a
---      matching die from the catalog (DEF = most Defends, ATK = most
---      Attacks, DAZE = a die containing the Daze face); the Event and
---      Faction dice are not designed yet, so those slots spawn a
---      clearly-labelled stand-in die for now. Clicking a slot again
---      replaces its previous die.
+--      below) that puts a visible red click zone over every
+--      printed Starting Dice slot on the board. Clicking a slot
+--      calls back into this Global script (spawnStartingDie), which
+--      places the slot's die on that exact spot on the mat: every
+--      combat slot spawns the same starting combat die (2x Block,
+--      1x Block +1, 1x Hit, 1x Daze, 1x Miss); the Event slots spawn
+--      their stat die (DEX green, CON yellow, STR red - 3x one-dot,
+--      2x blank, 1x two-dot sides); the Faction dice are the next
+--      build, so those slots just announce that for now. Clicking
+--      a slot again replaces its previous die.
 -- =====================================================================
 
 -- Asset/database base URL for this repo (change only if you fork/rename it).
@@ -51,7 +52,8 @@ local CATALOG_URL  = GITHUB_RAW_BASE .. "data/dice_catalog.json"
 local BOARD_IMAGE_URL = GITHUB_RAW_BASE .. "korts_board.png"
 
 local POOL_LABEL = {
-    misses = "Miss", attacks = "Attack", defends = "Defend", statuses = "Status",
+    misses = "Miss", attacks = "Attack", defends = "Defend",
+    statuses = "Status", event = "Event",
 }
 
 -- A Custom_Dice spawned with type=1 gets standard d6 rotation values
@@ -272,11 +274,28 @@ function buildCustomDie(player)
     })
     if die then
         die.setCustomObject({
-            image = GITHUB_RAW_BASE .. entry.texture,
+            image = GITHUB_RAW_BASE .. dieDef.texture,
             type = 1,  -- 1 = six-sided
         })
     end
 end
+
+-- Belt and braces for click dispatch: TTS once reported a slot
+-- handler as "not a function" even though the mat's object script
+-- defines it (the buttons now also carry function_owner = self).
+-- The same handlers live here in Global too, where the first
+-- argument is the mat the clicked button belongs to, so a click
+-- spawns its die whichever script TTS dispatches it into.
+pcall(function()
+    for _, def in ipairs(STARTING_SLOTS) do
+        _G["slot_" .. def.id] = function(obj, player_color)
+            if obj and obj.getGUID then
+                spawnStartingDie({ mat = obj.getGUID(),
+                    slot = def.id, player = player_color })
+            end
+        end
+    end
+end)
 
 
 -- ---------------------------------------------------------------------
@@ -323,12 +342,10 @@ function spawnPlayerMat(player)
             SpawnedMats[player.color] = spawned.getGUID()
             spawned.setLuaScript(buildMatScript())
             local matGuid = spawned.getGUID()
-            -- Self-healing backstop: the tile's own image-load reload
-            -- can land AFTER the script is set and wipe it (the object
-            -- is rebuilt from its pre-script data). A few seconds in,
-            -- once everything has settled, check whether the script
-            -- actually stuck - and re-apply it if it did not - then
-            -- force the button setup and report both facts.
+            -- Self-healing backstop: if the tile's own image-load
+            -- reload wiped the script set above, re-apply it once
+            -- everything has settled, and make sure the slot
+            -- buttons get built either way.
             Wait.time(function()
                 local m = getObjectFromGUID(matGuid)
                 if not m then return end
@@ -340,43 +357,7 @@ function spawnPlayerMat(player)
                 if not stuck then m.setLuaScript(buildMatScript()) end
                 Wait.time(function()
                     local mm = getObjectFromGUID(matGuid)
-                    if not mm then return end
-                    pcall(function() mm.call("setupButtons") end)
-                    -- Size ladder (temporary calibration): four
-                    -- red squares in a column over the mat, widths
-                    -- 100/200/400/800 button-units, all height 200.
-                    -- Comparing their rendered sizes against the mat
-                    -- in a screenshot pins down the exact
-                    -- button-unit scale.
-                    pcall(function()
-                        local widths = { 100, 200, 400, 800 }
-                        for i, w in ipairs(widths) do
-                            mm.createButton({
-                                click_function = "probeClicked",
-                                function_owner = Global,
-                                label = tostring(w),
-                                position = { 0, 1.6 + i * 0.9, 0 },
-                                rotation = { 0, 0, 0 },
-                                width = w, height = 200, font_size = 150,
-                                color = { 1, 0, 0, 0.8 },
-                                hover_color = { 1, 0.3, 0.3, 0.9 },
-                                press_color = { 0.8, 0, 0, 0.9 },
-                                font_color = { 1, 1, 1, 1 },
-                                tooltip = "Probe " .. w,
-                            })
-                        end
-                    end)
-                    local count = 0
-                    local okB, btns = pcall(function() return mm.getButtons() end)
-                    if okB and btns then count = #btns end
-                    local bb = mm.getBoundsNormalized()
-                    local ss = mm.getScale()
-                    broadcastToColor("Mat check: script " ..
-                        (stuck and "stuck" or "had to be re-applied") ..
-                        ", buttons live: " .. count .. " of 12, local " ..
-                        string.format("%.2f x %.2f.",
-                            bb.size.x / ss.x, bb.size.z / ss.z),
-                        player.color, { 0.75, 0.95, 0.75 })
+                    if mm then pcall(function() mm.call("setupButtons") end) end
                 end, 1.5)
             end, 3)
         end,
@@ -430,24 +411,24 @@ end
 -- the final board PNG - if the board art is ever rebuilt with a
 -- different layout, re-measure and update these numbers.
 local STARTING_SLOTS = {
-    { id = "combat_1", u = 0.23047, v = 0.71064, kind = "def",     pick = 1, label = "Combat - DEF" },
-    { id = "combat_2", u = 0.25928, v = 0.71064, kind = "def",     pick = 2, label = "Combat - DEF" },
-    { id = "combat_3", u = 0.28809, v = 0.71064, kind = "defplus", pick = 1, label = "Combat - DEF +1" },
-    { id = "combat_4", u = 0.31689, v = 0.71064, kind = "atk",     pick = 1, label = "Combat - ATK" },
-    { id = "combat_5", u = 0.34521, v = 0.71064, kind = "daze",    pick = 1, label = "Combat - DAZE" },
-    { id = "event_1",  u = 0.23047, v = 0.76226, kind = "event",   pick = 1, label = "Event - DEX" },
-    { id = "event_2",  u = 0.25928, v = 0.76226, kind = "event",   pick = 1, label = "Event - DEX" },
-    { id = "event_3",  u = 0.28809, v = 0.76226, kind = "event",   pick = 1, label = "Event - CON" },
-    { id = "event_4",  u = 0.31665, v = 0.76226, kind = "event",   pick = 1, label = "Event - CON" },
-    { id = "event_5",  u = 0.34521, v = 0.76226, kind = "event",   pick = 1, label = "Event - STR" },
-    { id = "faction_1", u = 0.27051, v = 0.82306, kind = "faction", pick = 1, label = "Faction - Drunkard's Resilience" },
-    { id = "faction_2", u = 0.30615, v = 0.82306, kind = "faction", pick = 1, label = "Faction - Hard Labor" },
+    { id = "combat_1", u = 0.23047, v = 0.71064, die = "combat",    label = "Combat - DEF" },
+    { id = "combat_2", u = 0.25928, v = 0.71064, die = "combat",    label = "Combat - DEF" },
+    { id = "combat_3", u = 0.28809, v = 0.71064, die = "combat",    label = "Combat - DEF +1" },
+    { id = "combat_4", u = 0.31689, v = 0.71064, die = "combat",    label = "Combat - ATK" },
+    { id = "combat_5", u = 0.34521, v = 0.71064, die = "combat",    label = "Combat - DAZE" },
+    { id = "event_1",  u = 0.23047, v = 0.76226, die = "event_dex", label = "Event - DEX" },
+    { id = "event_2",  u = 0.25928, v = 0.76226, die = "event_dex", label = "Event - DEX" },
+    { id = "event_3",  u = 0.28809, v = 0.76226, die = "event_con", label = "Event - CON" },
+    { id = "event_4",  u = 0.31665, v = 0.76226, die = "event_con", label = "Event - CON" },
+    { id = "event_5",  u = 0.34521, v = 0.76226, die = "event_str", label = "Event - STR" },
+    { id = "faction_1", u = 0.27051, v = 0.82306, label = "Faction - Drunkard's Resilience" },
+    { id = "faction_2", u = 0.30615, v = 0.82306, label = "Faction - Hard Labor" },
 }
 local STARTING_SLOTS_BY_ID = {}
 for _, def in ipairs(STARTING_SLOTS) do STARTING_SLOTS_BY_ID[def.id] = def end
 
--- The object script every spawned mat gets. It draws NO visible UI -
--- just invisible buttons over the printed slots - and forwards clicks
+-- The object script every spawned mat gets. It puts the slot
+-- buttons over the printed slots and forwards clicks
 -- to Global.spawnStartingDie. Button positions are computed from the
 -- tile's own bounds, so the zones sit on the printed slots whatever
 -- scale the tile has. (%s placeholders: slot lines, click handlers.)
@@ -458,16 +439,14 @@ local SLOTS = {
 }
 local SLOT_W_FRAC = 0.02222
 local SLOT_H_FRAC = 0.02610
--- DEBUG: zones drawn as visible red squares, raised well above the
--- mat, so their true position can be seen and reported. Flip to
--- false for the invisible production version once the placement is
--- confirmed in TTS. NOTE: createButton width/height are NOT in the
--- local units position uses - they run ~1000x finer (the API's own
--- example pairs position {0,1,0} with width 800, font_size 340).
--- The first builds used local-unit sizes (~0.06), which made the
--- buttons real but sub-pixel: counted by getButtons, never seen,
--- never clickable.
-local DEBUG_ZONES = true
+-- The zones are visible translucent red squares sitting just
+-- above the printed slots (placement confirmed in TTS; Ben asked
+-- to keep the colour). NOTE: createButton width/height are NOT in
+-- the local units position uses - they run much finer (the API's
+-- own example pairs position {0,1,0} with width 800). The first
+-- builds used local-unit sizes (~0.06), which made the buttons
+-- real but sub-pixel: counted by getButtons, never seen, never
+-- clickable. The x600 factor below is the calibrated fit.
 
 function setupButtons()
     self.clearButtons()
@@ -479,20 +458,18 @@ function setupButtons()
     for _, slot in ipairs(SLOTS) do
         self.createButton({
             click_function = "slot_" .. slot.id,
+            function_owner = self,
             label = "",
             tooltip = slot.tip,
             position = { (slot.u - 0.5) * nx,
-                         topY + (DEBUG_ZONES and 0.15 or 0.35),
+                         topY + 0.15,
                          (slot.v - 0.5) * nz },
             rotation = { 0, 0, 0 },
             width = SLOT_W_FRAC * nx * 600,
             height = SLOT_H_FRAC * nz * 600,
-            color = DEBUG_ZONES and { 1, 0.25, 0.25, 0.55 }
-                or { 0, 0, 0, 0 },
-            hover_color = DEBUG_ZONES and { 1, 0.4, 0.4, 0.75 }
-                or { 0, 0, 0, 0 },
-            press_color = DEBUG_ZONES and { 0.9, 0.2, 0.2, 0.85 }
-                or { 0, 0, 0, 0 },
+            color = { 1, 0.25, 0.25, 0.55 },
+            hover_color = { 1, 0.4, 0.4, 0.75 },
+            press_color = { 0.9, 0.2, 0.2, 0.85 },
             font_color = { 0, 0, 0, 0 },
         })
     end
@@ -525,59 +502,63 @@ buildMatScript = function()
         table.concat(slotLines, "\n"), table.concat(handlerLines, "\n\n"))
 end
 
--- Pick the catalog die that best matches a slot's kind.
-local function pickCatalogDie(kind, pick)
-    local scored = {}
-    for _, entry in ipairs(DiceCatalog) do
-        local faces = resolveFaces(entry)
-        local counts = countPools(faces)
-        local score
-        if kind == "def" or kind == "defplus" then
-            score = counts.defends
-            if kind == "defplus" then
-                for _, f in ipairs(faces) do
-                    if f.id == "block_1" then score = score + 0.5 end
-                end
-            end
-        elseif kind == "atk" then
-            score = counts.attacks
-        elseif kind == "daze" then
-            score = counts.statuses
-            for _, f in ipairs(faces) do
-                if f.id == "status_daze" then score = score + 10 end
-            end
-        else  -- event / faction: not designed yet, any die as a stand-in
-            score = math.random()
-        end
-        scored[#scored + 1] = { entry = entry, score = score }
+-- The starting dice themselves. Combat: every combat slot spawns
+-- the SAME die (Ben's spec) - 2x Block, 1x Block +1, 1x Hit,
+-- 1x Daze, 1x Miss - using the real face-database faces. Event:
+-- one die per stat (DEX green, CON yellow, STR red), each with
+-- 3x one-dot, 2x blank and 1x two-dot sides. Face lists are in
+-- die-value order (index 1 = value 1 ... index 6 = value 6) and
+-- match tools/build_starting_dice.py exactly.
+local STARTING_DICE_DEFS = {
+    combat = {
+        label = "Starting Combat Die",
+        texture = "starting_combat.png",
+        faceIds = { "miss", "block", "block_1", "hit", "status_daze", "block" },
+    },
+    event_dex = { label = "Starting Event Die - DEX", texture = "starting_event_dex.png", stat = "DEX" },
+    event_con = { label = "Starting Event Die - CON", texture = "starting_event_con.png", stat = "CON" },
+    event_str = { label = "Starting Event Die - STR", texture = "starting_event_str.png", stat = "STR" },
+}
+
+-- Event die faces in value order: blank, 1 dot, 1 dot, 2 dots,
+-- 1 dot, blank (matches the painted textures).
+local function eventDieFaces(stat)
+    local function face(name, dots)
+        return {
+            id = "event_" .. string.lower(stat) .. "_" .. dots,
+            name = name, pool = "event", value = dots,
+            effect = stat .. " event check: " ..
+                (dots == 0 and "no dots." or
+                 (dots == 1 and "1 dot." or "2 dots.")),
+        }
     end
-    table.sort(scored, function(a, b) return a.score > b.score end)
-    return scored[math.min(pick or 1, #scored)].entry
+    return { face("Blank", 0), face("1 Dot", 1), face("1 Dot", 1),
+             face("2 Dots", 2), face("1 Dot", 1), face("Blank", 0) }
 end
 
--- Brute-force probe (temporary): the backstop hangs one huge red
--- TEST button over the mat's centre. If it renders, button creation
--- works and its size calibrates the width/height unit question.
-function probeClicked(_, player_color)
-    broadcastToColor("Probe button clicked - buttons DO work here!",
-        player_color, { 0.75, 0.95, 0.75 })
-end
-
--- Called from a mat's object script when a Starting Dice slot zone is
--- clicked: place that slot's die on the slot (replacing any die the
--- slot already holds). The die is PLACED, not rolled.
+-- Called from a mat's object script when a Starting Dice slot zone
+-- is clicked: place that slot's die on the slot (replacing any die
+-- the slot already holds). The die is PLACED, not rolled.
 function spawnStartingDie(params)
     local mat = getObjectFromGUID(params.mat)
     local def = STARTING_SLOTS_BY_ID[params.slot]
     if not mat or not def then return end
-    if FaceDatabase == nil or DiceCatalog == nil then
+    if not def.die then
+        broadcastToColor(def.label .. " - the faction dice are the " ..
+            "next build; this slot is wired and ready for them.",
+            params.player, { 0.95, 0.8, 0.5 })
+        return
+    end
+    if FaceDatabase == nil then
         broadcastToColor("The dice workshop is still warming up - try again in a second!",
             params.player, { 0.95, 0.55, 0.45 })
         return
     end
 
-    local entry = pickCatalogDie(def.kind, def.pick)
-    local faces = resolveFaces(entry)
+    local dieDef = STARTING_DICE_DEFS[def.die]
+    local faces = dieDef.faceIds
+        and resolveFaces({ faces = dieDef.faceIds })
+        or eventDieFaces(dieDef.stat)
 
     MatSlotDice[params.mat] = MatSlotDice[params.mat] or {}
     local oldGuid = MatSlotDice[params.mat][params.slot]
@@ -599,16 +580,8 @@ function spawnStartingDie(params)
     local worldPos = mat.positionToWorld(localPos)
 
     local ownerName = playerDisplayName({ color = params.player })
-    local dieName, note
-    if def.kind == "event" or def.kind == "faction" then
-        dieName = "Starting Die - " .. def.label .. " (stand-in)"
-        note = "Stand-in die: the real " .. def.label ..
-            " die is not designed yet. This slot's button is wired " ..
-            "and will spawn it once it exists.\n\n"
-    else
-        dieName = "Starting Die - " .. def.label
-        note = ""
-    end
+    local dieName = dieDef.label
+    local note = ""
 
     local die = spawnObject({
         type = "Custom_Dice",
@@ -627,11 +600,28 @@ function spawnStartingDie(params)
     })
     if die then
         die.setCustomObject({
-            image = GITHUB_RAW_BASE .. entry.texture,
+            image = GITHUB_RAW_BASE .. dieDef.texture,
             type = 1,  -- 1 = six-sided
         })
     end
 end
+
+-- Belt and braces for click dispatch: TTS once reported a slot
+-- handler as "not a function" even though the mat's object script
+-- defines it (the buttons now also carry function_owner = self).
+-- The same handlers live here in Global too, where the first
+-- argument is the mat the clicked button belongs to, so a click
+-- spawns its die whichever script TTS dispatches it into.
+pcall(function()
+    for _, def in ipairs(STARTING_SLOTS) do
+        _G["slot_" .. def.id] = function(obj, player_color)
+            if obj and obj.getGUID then
+                spawnStartingDie({ mat = obj.getGUID(),
+                    slot = def.id, player = player_color })
+            end
+        end
+    end
+end)
 
 
 -- =====================================================================

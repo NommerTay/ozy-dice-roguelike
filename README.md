@@ -9,13 +9,13 @@ Press **Roll** at the bottom of the screen and the game builds you a brand-new c
 | Pool | Faces per die | Dice types in the database |
 |---|---|---|
 | **Misses** | 1–2 | Miss (also x2, x3), Chip, Break |
-| **Attacks** | 1–3 | Hit +1…+5, Crit, Crit x2 |
-| **Defends** | 1–3 | Block +1…+5, Negate |
+| **Attacks** | 1–3 | Hit, Hit +1…+5, Crit, Crit x2 |
+| **Defends** | 1–3 | Block, Block +1…+5, Negate |
 | **Statuses** | 0–2 | Burn, Bleed, Poison, Corrupt, Bless, Daze, Inspire, Recoup, Charge (effects TBD) |
 
 Counts are composed inside those ranges and total exactly **6** — every pre-made die in the catalog is a legal, playable die.
 
-The 27 face icons are cozy pixel art: master artworks (generated in Canva and with the built-in generator, masters kept outside the repo) are pixel-normalized, framed with pool-coloured rims (blue-grey = Misses, terracotta = Attacks, sage = Defends, lilac = Statuses) and stamped with pixel-font variation badges by `tools/build_faces.py`. `assets/icons/miss_stamp.png` is a round transparent Miss sticker reserved for the Chip mechanic.
+The 29 face icons are cozy pixel art: master artworks (generated in Canva and with the built-in generator, masters kept outside the repo) are pixel-normalized, framed with pool-coloured rims (blue-grey = Misses, terracotta = Attacks, sage = Defends, lilac = Statuses) and stamped with pixel-font variation badges by `tools/build_faces.py`. `assets/icons/miss_stamp.png` is a round transparent Miss sticker reserved for the Chip mechanic.
 
 ## Repo layout
 
@@ -70,3 +70,4 @@ No GitHub access / bad URL? The button still works — `Global.lua` falls back t
 
 - The dice are genuine TTS **Custom Dice**: each die's 6 faces are baked into one texture image (`dice_01.png` … `dice_13.png` in the repo root) by `tools/generate_dice_textures.py` — one die per legal composition, since a Custom Dice texture can't be composed at click-time inside TTS. The texture layout (3×2 grid of faces under an unused top band, value→cell map in the generator) was verified against real Custom Dice save files. To grow the dice pool, re-run the generator with more dice per composition and upload the new textures.
 - This is test #1: build-and-roll only. Drafting between rounds, collecting/trading dice, and status-effect bookkeeping are the next scripts.
+- **Starting dice (player mat):** the mat's Starting Dice slots are clickable (translucent red squares on the board). Every combat slot spawns the same starting combat die — 2× Block, 1× Block +1, 1× Hit, 1× Daze, 1× Miss (`starting_combat.png`). The Event slots spawn their stat die — DEX green, CON yellow, STR red — each with 3× one-dot, 2× blank and 1× two-dot sides (`starting_event_dex/con/str.png`). Textures are built by `tools/build_starting_dice.py`. The two Faction slots are wired but their dice are not designed yet; clicking one says so in chat.
