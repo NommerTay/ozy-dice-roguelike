@@ -323,17 +323,34 @@ function spawnPlayerMat(player)
             SpawnedMats[player.color] = spawned.getGUID()
             spawned.setLuaScript(buildMatScript())
             local matGuid = spawned.getGUID()
+            -- Self-healing backstop: the tile's own image-load reload
+            -- can land AFTER the script is set and wipe it (the object
+            -- is rebuilt from its pre-script data). A few seconds in,
+            -- once everything has settled, check whether the script
+            -- actually stuck - and re-apply it if it did not - then
+            -- force the button setup and report both facts.
             Wait.time(function()
                 local m = getObjectFromGUID(matGuid)
                 if not m then return end
-                pcall(function() m.call("setupButtons") end)
-                local count = 0
-                local okB, btns = pcall(function() return m.getButtons() end)
-                if okB and btns then count = #btns end
-                broadcastToColor("Player mat ready: " .. count ..
-                    " of 12 starter-slot buttons live.", player.color,
-                    { 0.75, 0.95, 0.75 })
-            end, 2.5)
+                local stuck = false
+                local okS, scr = pcall(function() return m.getLuaScript() end)
+                if okS and scr and scr:find("setupButtons", 1, true) then
+                    stuck = true
+                end
+                if not stuck then m.setLuaScript(buildMatScript()) end
+                Wait.time(function()
+                    local mm = getObjectFromGUID(matGuid)
+                    if not mm then return end
+                    pcall(function() mm.call("setupButtons") end)
+                    local count = 0
+                    local okB, btns = pcall(function() return mm.getButtons() end)
+                    if okB and btns then count = #btns end
+                    broadcastToColor("Mat check: script " ..
+                        (stuck and "stuck" or "had to be re-applied") ..
+                        ", buttons live: " .. count .. " of 12.",
+                        player.color, { 0.75, 0.95, 0.75 })
+                end, 1.5)
+            end, 3)
         end,
     })
     if mat then
