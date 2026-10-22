@@ -56,6 +56,8 @@ tools/generate_dice_textures.py
 5. Click **Roll**: the script downloads `data/face_database.json` and `data/dice_catalog.json` from GitHub, picks one of the pre-made dice at random, spawns it as a real **Custom Dice** object with its baked texture, stores the faces in the die's GM Notes + description, rolls it, and broadcasts the top face's effect when it settles.
 6. Click **Player Mat**: the script spawns the Korts player board as a real **Custom Tile** (flat rectangle; the PNG is the board cropped tight at 4096×3487, ~1.18:1, backdrop painted in from the scenery) in front of you, using the board PNG from the repo root. One mat per player — clicking again replaces your old mat. Move/rotate it like any tile; resize via `MAT_SCALE` in `Global.lua`.
 
+**Clickable starter slots:** every spawned mat also carries invisible click zones over its printed **Starting Dice** slots (positions measured from the board PNG, computed from the tile's own bounds, so they track the mat if you move or rotate it). Click a slot and its die is placed on that spot: Combat slots pick a matching catalog die (DEF = most Defends, DEF +1 prefers a Block +1 face, ATK = most Attacks, DAZE = a die containing the Daze face). The Event and Faction dice aren't designed yet, so those slots spawn a clearly-labelled stand-in die for now. Clicking a slot again replaces its die. Needs a freshly spawned mat — mats from before this feature don't have the zones.
+
 No GitHub access / bad URL? The button still works — `Global.lua` falls back to a small embedded copy of the database (and says so in the log).
 
 ## Adding a new face (the drafting/collecting loop)

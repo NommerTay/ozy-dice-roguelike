@@ -26,6 +26,16 @@
 --      rectangular tile) with the board art from this repo
 --      (the board PNG in the repo root). One mat per player:
 --      clicking again replaces that player's old mat.
+--   5. Each spawned mat carries a small object script (generated
+--      below) that puts an INVISIBLE click zone over every printed
+--      Starting Dice slot on the board. Clicking a slot calls back
+--      into this Global script (spawnStartingDie), which places the
+--      slot's die on that exact spot on the mat: combat slots pick a
+--      matching die from the catalog (DEF = most Defends, ATK = most
+--      Attacks, DAZE = a die containing the Daze face); the Event and
+--      Faction dice are not designed yet, so those slots spawn a
+--      clearly-labelled stand-in die for now. Clicking a slot again
+--      replaces its previous die.
 -- =====================================================================
 
 -- Asset/database base URL for this repo (change only if you fork/rename it).
@@ -56,6 +66,7 @@ local FaceDatabase = nil   -- filled by the GitHub download, or the fallback
 local DiceCatalog  = nil   -- filled by the GitHub download, or the fallback
 local BuiltDice    = {}    -- guid -> { faces = {...}, owner = color }
 local SpawnedMats  = {}    -- player color -> guid of their current mat
+local MatSlotDice  = {}    -- mat guid -> { slot id -> die guid }
 
 -- ---------------------------------------------------------------------
 -- Loading
@@ -307,6 +318,7 @@ function spawnPlayerMat(player)
                 "starting dice, and the mine's active dice, treasures " ..
                 "and artifacts.")
             SpawnedMats[player.color] = spawned.getGUID()
+            spawned.setLuaScript(buildMatScript())
         end,
     })
     if mat then
@@ -347,7 +359,193 @@ function onObjectDestroy(object)
     for color, guid in pairs(SpawnedMats) do
         if guid == object.getGUID() then SpawnedMats[color] = nil end
     end
+    MatSlotDice[object.getGUID()] = nil
 end
+
+-- =====================================================================
+-- STARTING DICE SLOTS - invisible click zones on the player mat
+-- =====================================================================
+-- Slot positions are fractions of the shipped board image
+-- (u = across from the left, v = down from the top), MEASURED from
+-- the final board PNG - if the board art is ever rebuilt with a
+-- different layout, re-measure and update these numbers.
+local STARTING_SLOTS = {
+    { id = "combat_1", u = 0.23047, v = 0.71064, kind = "def",     pick = 1, label = "Combat - DEF" },
+    { id = "combat_2", u = 0.25928, v = 0.71064, kind = "def",     pick = 2, label = "Combat - DEF" },
+    { id = "combat_3", u = 0.28809, v = 0.71064, kind = "defplus", pick = 1, label = "Combat - DEF +1" },
+    { id = "combat_4", u = 0.31689, v = 0.71064, kind = "atk",     pick = 1, label = "Combat - ATK" },
+    { id = "combat_5", u = 0.34521, v = 0.71064, kind = "daze",    pick = 1, label = "Combat - DAZE" },
+    { id = "event_1",  u = 0.23047, v = 0.76226, kind = "event",   pick = 1, label = "Event - DEX" },
+    { id = "event_2",  u = 0.25928, v = 0.76226, kind = "event",   pick = 1, label = "Event - DEX" },
+    { id = "event_3",  u = 0.28809, v = 0.76226, kind = "event",   pick = 1, label = "Event - CON" },
+    { id = "event_4",  u = 0.31665, v = 0.76226, kind = "event",   pick = 1, label = "Event - CON" },
+    { id = "event_5",  u = 0.34521, v = 0.76226, kind = "event",   pick = 1, label = "Event - STR" },
+    { id = "faction_1", u = 0.27051, v = 0.82306, kind = "faction", pick = 1, label = "Faction - Drunkard's Resilience" },
+    { id = "faction_2", u = 0.30615, v = 0.82306, kind = "faction", pick = 1, label = "Faction - Hard Labor" },
+}
+local STARTING_SLOTS_BY_ID = {}
+for _, def in ipairs(STARTING_SLOTS) do STARTING_SLOTS_BY_ID[def.id] = def end
+
+-- The object script every spawned mat gets. It draws NO visible UI -
+-- just invisible buttons over the printed slots - and forwards clicks
+-- to Global.spawnStartingDie. Button positions are computed from the
+-- tile's own bounds, so the zones sit on the printed slots whatever
+-- scale the tile has. (%s placeholders: slot lines, click handlers.)
+local MAT_SCRIPT_TEMPLATE = [==[
+-- Korts Player Mat (object script, set by Global.lua at spawn time)
+local SLOTS = {
+%s
+}
+local SLOT_W_FRAC = 0.02222
+local SLOT_H_FRAC = 0.02610
+
+local function makeButtons()
+    self.clearButtons()
+    local bounds = self.getBoundsNormalized()
+    local scale = self.getScale()
+    local nx = bounds.size.x / scale.x
+    local nz = bounds.size.z / scale.z
+    local topY = (bounds.size.y / scale.y) / 2
+    for _, slot in ipairs(SLOTS) do
+        self.createButton({
+            click_function = "slot_" .. slot.id,
+            label = "",
+            tooltip = slot.tip,
+            position = { (slot.u - 0.5) * nx, topY + 0.35,
+                         (slot.v - 0.5) * nz },
+            rotation = { 0, 0, 0 },
+            width = SLOT_W_FRAC * nx * 1.2,
+            height = SLOT_H_FRAC * nz * 1.2,
+            color = { 0, 0, 0, 0 },
+            hover_color = { 0, 0, 0, 0 },
+            press_color = { 0, 0, 0, 0 },
+            font_color = { 0, 0, 0, 0 },
+        })
+    end
+end
+
+function onLoad()
+    makeButtons()
+end
+
+%s
+]==]
+
+local function buildMatScript()
+    local slotLines, handlerLines = {}, {}
+    for _, def in ipairs(STARTING_SLOTS) do
+        slotLines[#slotLines + 1] = string.format(
+            '    { id = "%s", u = %.5f, v = %.5f, tip = "Spawn die: %s" },',
+            def.id, def.u, def.v, def.label)
+        handlerLines[#handlerLines + 1] = string.format(
+            'function slot_%s(_, player_color)\n' ..
+            '    Global.call("spawnStartingDie", { mat = self.getGUID(), ' ..
+            'slot = "%s", player = player_color })\nend', def.id, def.id)
+    end
+    return string.format(MAT_SCRIPT_TEMPLATE,
+        table.concat(slotLines, "\n"), table.concat(handlerLines, "\n\n"))
+end
+
+-- Pick the catalog die that best matches a slot's kind.
+local function pickCatalogDie(kind, pick)
+    local scored = {}
+    for _, entry in ipairs(DiceCatalog) do
+        local faces = resolveFaces(entry)
+        local counts = countPools(faces)
+        local score
+        if kind == "def" or kind == "defplus" then
+            score = counts.defends
+            if kind == "defplus" then
+                for _, f in ipairs(faces) do
+                    if f.id == "block_1" then score = score + 0.5 end
+                end
+            end
+        elseif kind == "atk" then
+            score = counts.attacks
+        elseif kind == "daze" then
+            score = counts.statuses
+            for _, f in ipairs(faces) do
+                if f.id == "status_daze" then score = score + 10 end
+            end
+        else  -- event / faction: not designed yet, any die as a stand-in
+            score = math.random()
+        end
+        scored[#scored + 1] = { entry = entry, score = score }
+    end
+    table.sort(scored, function(a, b) return a.score > b.score end)
+    return scored[math.min(pick or 1, #scored)].entry
+end
+
+-- Called from a mat's object script when a Starting Dice slot zone is
+-- clicked: place that slot's die on the slot (replacing any die the
+-- slot already holds). The die is PLACED, not rolled.
+function spawnStartingDie(params)
+    local mat = getObjectFromGUID(params.mat)
+    local def = STARTING_SLOTS_BY_ID[params.slot]
+    if not mat or not def then return end
+    if FaceDatabase == nil or DiceCatalog == nil then
+        broadcastToColor("The dice workshop is still warming up - try again in a second!",
+            params.player, { 0.95, 0.55, 0.45 })
+        return
+    end
+
+    local entry = pickCatalogDie(def.kind, def.pick)
+    local faces = resolveFaces(entry)
+
+    MatSlotDice[params.mat] = MatSlotDice[params.mat] or {}
+    local oldGuid = MatSlotDice[params.mat][params.slot]
+    if oldGuid then
+        local old = getObjectFromGUID(oldGuid)
+        if old then old.destruct() end
+        MatSlotDice[params.mat][params.slot] = nil
+    end
+
+    -- The slot's world position, via the mat's own transform (so this
+    -- still lands on the slot if the mat has been moved or rotated).
+    local bounds = mat.getBoundsNormalized()
+    local scale = mat.getScale()
+    local localPos = {
+        (def.u - 0.5) * (bounds.size.x / scale.x),
+        (bounds.size.y / scale.y) / 2 + 1.2,
+        (def.v - 0.5) * (bounds.size.z / scale.z),
+    }
+    local worldPos = mat.positionToWorld(localPos)
+
+    local ownerName = playerDisplayName({ color = params.player })
+    local dieName, note
+    if def.kind == "event" or def.kind == "faction" then
+        dieName = "Starting Die - " .. def.label .. " (stand-in)"
+        note = "Stand-in die: the real " .. def.label ..
+            " die is not designed yet. This slot's button is wired " ..
+            "and will spawn it once it exists.\n\n"
+    else
+        dieName = "Starting Die - " .. def.label
+        note = ""
+    end
+
+    local die = spawnObject({
+        type = "Custom_Dice",
+        position = worldPos,
+        rotation = { 0, math.random(360), 0 },
+        scale = { 1.4, 1.4, 1.4 },
+        sound = true,
+        callback_function = function(spawned)
+            spawned.setName(dieName .. " - " .. ownerName)
+            spawned.setDescription(note .. describeFaces(faces))
+            spawned.setGMNotes(JSON.encode(faces))
+            BuiltDice[spawned.getGUID()] = { faces = faces,
+                owner = params.player, ownerName = ownerName }
+            MatSlotDice[params.mat][params.slot] = spawned.getGUID()
+        end,
+    })
+    if die then
+        die.setCustomObject({
+            image = GITHUB_RAW_BASE .. entry.texture,
+            type = 1,  -- 1 = six-sided
+        })
+    end
+end
+
 
 -- =====================================================================
 -- EMBEDDED FALLBACK DATABASE
