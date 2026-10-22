@@ -322,6 +322,18 @@ function spawnPlayerMat(player)
                 "and artifacts.")
             SpawnedMats[player.color] = spawned.getGUID()
             spawned.setLuaScript(buildMatScript())
+            local matGuid = spawned.getGUID()
+            Wait.time(function()
+                local m = getObjectFromGUID(matGuid)
+                if not m then return end
+                pcall(function() m.call("setupButtons") end)
+                local count = 0
+                local okB, btns = pcall(function() return m.getButtons() end)
+                if okB and btns then count = #btns end
+                broadcastToColor("Player mat ready: " .. count ..
+                    " of 12 starter-slot buttons live.", player.color,
+                    { 0.75, 0.95, 0.75 })
+            end, 2.5)
         end,
     })
     if mat then
@@ -402,7 +414,7 @@ local SLOTS = {
 local SLOT_W_FRAC = 0.02222
 local SLOT_H_FRAC = 0.02610
 
-local function makeButtons()
+function setupButtons()
     self.clearButtons()
     local bounds = self.getBoundsNormalized()
     local scale = self.getScale()
@@ -428,7 +440,12 @@ local function makeButtons()
 end
 
 function onLoad()
-    makeButtons()
+    -- Defer zone creation: doing it the instant this script lands
+    -- races the tile's own image load - the bounds can still be the
+    -- unloaded placeholder's, and a load reload can wipe buttons
+    -- made too early. Global also calls setupButtons again as a
+    -- backstop a couple of seconds after spawning.
+    Wait.time(setupButtons, 1)
 end
 
 %s
