@@ -413,6 +413,11 @@ local SLOTS = {
 }
 local SLOT_W_FRAC = 0.02222
 local SLOT_H_FRAC = 0.02610
+-- DEBUG: zones drawn as visible red squares, raised well above the
+-- mat and oversized, so their true position can be seen and reported.
+-- Flip to false for the invisible production version once the
+-- placement is confirmed in TTS.
+local DEBUG_ZONES = true
 
 function setupButtons()
     self.clearButtons()
@@ -426,14 +431,18 @@ function setupButtons()
             click_function = "slot_" .. slot.id,
             label = "",
             tooltip = slot.tip,
-            position = { (slot.u - 0.5) * nx, topY + 0.35,
+            position = { (slot.u - 0.5) * nx,
+                         topY + (DEBUG_ZONES and 1.2 or 0.35),
                          (slot.v - 0.5) * nz },
             rotation = { 0, 0, 0 },
-            width = SLOT_W_FRAC * nx * 1.2,
-            height = SLOT_H_FRAC * nz * 1.2,
-            color = { 0, 0, 0, 0 },
-            hover_color = { 0, 0, 0, 0 },
-            press_color = { 0, 0, 0, 0 },
+            width = SLOT_W_FRAC * nx * (DEBUG_ZONES and 2.2 or 1.2),
+            height = SLOT_H_FRAC * nz * (DEBUG_ZONES and 2.2 or 1.2),
+            color = DEBUG_ZONES and { 1, 0.25, 0.25, 0.55 }
+                or { 0, 0, 0, 0 },
+            hover_color = DEBUG_ZONES and { 1, 0.4, 0.4, 0.75 }
+                or { 0, 0, 0, 0 },
+            press_color = DEBUG_ZONES and { 0.9, 0.2, 0.2, 0.85 }
+                or { 0, 0, 0, 0 },
             font_color = { 0, 0, 0, 0 },
         })
     end
