@@ -1,0 +1,238 @@
+{
+  "dice": [
+    {
+      "id": "dice_01",
+      "texture": "dice_01.png",
+      "composition": {
+        "misses": 1,
+        "attacks": 1,
+        "defends": 2,
+        "statuses": 2
+      },
+      "faces": [
+        "status_poison_shroom",
+        "defend_knitted_blanket",
+        "defend_pot_lid",
+        "miss_tangled_yarn",
+        "status_burn",
+        "attack_paw_swipe"
+      ]
+    },
+    {
+      "id": "dice_02",
+      "texture": "dice_02.png",
+      "composition": {
+        "misses": 1,
+        "attacks": 1,
+        "defends": 3,
+        "statuses": 1
+      },
+      "faces": [
+        "defend_pot_lid",
+        "status_bloom",
+        "defend_knitted_blanket",
+        "defend_stone_wall",
+        "attack_bow",
+        "miss_cloud"
+      ]
+    },
+    {
+      "id": "dice_03",
+      "texture": "dice_03.png",
+      "composition": {
+        "misses": 1,
+        "attacks": 2,
+        "defends": 1,
+        "statuses": 2
+      },
+      "faces": [
+        "defend_wooden_shield",
+        "miss_cracked_egg",
+        "status_bloom",
+        "status_poison_shroom",
+        "attack_paw_swipe",
+        "attack_acorn_sling"
+      ]
+    },
+    {
+      "id": "dice_04",
+      "texture": "dice_04.png",
+      "composition": {
+        "misses": 1,
+        "attacks": 2,
+        "defends": 2,
+        "statuses": 1
+      },
+      "faces": [
+        "status_poison_shroom",
+        "defend_stone_wall",
+        "miss_cloud",
+        "attack_paw_swipe",
+        "attack_bow",
+        "defend_wooden_shield"
+      ]
+    },
+    {
+      "id": "dice_05",
+      "texture": "dice_05.png",
+      "composition": {
+        "misses": 1,
+        "attacks": 2,
+        "defends": 3,
+        "statuses": 0
+      },
+      "faces": [
+        "attack_acorn_sling",
+        "defend_stone_wall",
+        "defend_wooden_shield",
+        "attack_paw_swipe",
+        "miss_dropped_mug",
+        "defend_knitted_blanket"
+      ]
+    },
+    {
+      "id": "dice_06",
+      "texture": "dice_06.png",
+      "composition": {
+        "misses": 1,
+        "attacks": 3,
+        "defends": 1,
+        "statuses": 1
+      },
+      "faces": [
+        "attack_ember",
+        "status_bloom",
+        "attack_paw_swipe",
+        "defend_pot_lid",
+        "miss_cloud",
+        "attack_wooden_sword"
+      ]
+    },
+    {
+      "id": "dice_07",
+      "texture": "dice_07.png",
+      "composition": {
+        "misses": 1,
+        "attacks": 3,
+        "defends": 2,
+        "statuses": 0
+      },
+      "faces": [
+        "defend_umbrella",
+        "attack_paw_swipe",
+        "defend_wooden_shield",
+        "attack_bow",
+        "miss_cracked_egg",
+        "attack_acorn_sling"
+      ]
+    },
+    {
+      "id": "dice_08",
+      "texture": "dice_08.png",
+      "composition": {
+        "misses": 2,
+        "attacks": 1,
+        "defends": 1,
+        "statuses": 2
+      },
+      "faces": [
+        "defend_knitted_blanket",
+        "status_chill",
+        "miss_cracked_egg",
+        "attack_wooden_sword",
+        "miss_cloud",
+        "status_bloom"
+      ]
+    },
+    {
+      "id": "dice_09",
+      "texture": "dice_09.png",
+      "composition": {
+        "misses": 2,
+        "attacks": 1,
+        "defends": 2,
+        "statuses": 1
+      },
+      "faces": [
+        "defend_umbrella",
+        "attack_ember",
+        "miss_butterfly",
+        "miss_cloud",
+        "defend_wooden_shield",
+        "status_poison_shroom"
+      ]
+    },
+    {
+      "id": "dice_10",
+      "texture": "dice_10.png",
+      "composition": {
+        "misses": 2,
+        "attacks": 1,
+        "defends": 3,
+        "statuses": 0
+      },
+      "faces": [
+        "miss_dropped_mug",
+        "defend_umbrella",
+        "miss_cloud",
+        "defend_pot_lid",
+        "defend_knitted_blanket",
+        "attack_acorn_sling"
+      ]
+    },
+    {
+      "id": "dice_11",
+      "texture": "dice_11.png",
+      "composition": {
+        "misses": 2,
+        "attacks": 2,
+        "defends": 1,
+        "statuses": 1
+      },
+      "faces": [
+        "miss_tangled_yarn",
+        "attack_paw_swipe",
+        "attack_ember",
+        "status_burn",
+        "defend_pot_lid",
+        "miss_dropped_mug"
+      ]
+    },
+    {
+      "id": "dice_12",
+      "texture": "dice_12.png",
+      "composition": {
+        "misses": 2,
+        "attacks": 2,
+        "defends": 2,
+        "statuses": 0
+      },
+      "faces": [
+        "attack_paw_swipe",
+        "miss_dropped_mug",
+        "attack_wooden_sword",
+        "miss_cracked_egg",
+        "defend_stone_wall",
+        "defend_pot_lid"
+      ]
+    },
+    {
+      "id": "dice_13",
+      "texture": "dice_13.png",
+      "composition": {
+        "misses": 2,
+        "attacks": 3,
+        "defends": 1,
+        "statuses": 0
+      },
+      "faces": [
+        "attack_bow",
+        "defend_stone_wall",
+        "attack_paw_swipe",
+        "miss_dropped_mug",
+        "attack_wooden_sword",
+        "miss_butterfly"
+      ]
+    }
+  ]
+}

@@ -9,14 +9,16 @@
 --      If the download fails, it falls back to the small embedded copy
 --      at the bottom of this file, so the table still works offline.
 --   2. Clicking the "Roll" button (bottom of the Global UI) builds a
---      brand-new custom d6 for the clicking player:
---        * rolls a face composition inside these ranges, totalling 6:
---            Misses 1-2 | Attacks 1-3 | Defends 1-3 | Statuses 0-2
---        * picks that many faces at random from each pool
---        * spawns a d6, paints each chosen face icon on it as a decal
---          (loaded straight from the GitHub raw URLs), stores the six
---          faces in the die's GM Notes, names/describes the die, and
---          rolls it in front of the player.
+--      brand-new custom d6 for the clicking player. The die is a real
+--      TTS "Custom_Dice" object whose texture (all 6 faces baked into
+--      one image, hosted in this repo) was composed at build time by
+--      tools/generate_dice_textures.py - one finished die per legal
+--      composition (Misses 1-2 | Attacks 1-3 | Defends 1-3 |
+--      Statuses 0-2, totalling 6). A Custom_Dice texture can't be
+--      composed at click-time (TTS Lua cannot stitch images), so the
+--      button picks one of the pre-made dice at random, spawns it with
+--      its texture straight from GitHub, and rolls it for the player.
+--      The catalog of dice lives in data/dice_catalog.json.
 --   3. When the die comes to rest, the top face (die value 1-6) is
 --      looked up in that stored list and its effect is broadcast.
 -- =====================================================================
@@ -25,75 +27,31 @@
 local GITHUB_RAW_BASE =
     "https://raw.githubusercontent.com/NommerTay/ozy-dice-roguelike/main/"
 local DATABASE_URL = GITHUB_RAW_BASE .. "data/face_database.json"
-
--- Composition ranges, straight from the design brief (must total 6).
-local COMPOSITION = {
-    misses   = { min = 1, max = 2 },
-    attacks  = { min = 1, max = 3 },
-    defends  = { min = 1, max = 3 },
-    statuses = { min = 0, max = 2 },
-}
-local DIE_SIDES = 6
+local CATALOG_URL  = GITHUB_RAW_BASE .. "data/dice_catalog.json"
 
 local POOL_LABEL = {
     misses = "Miss", attacks = "Attack", defends = "Defend", statuses = "Status",
 }
 
--- Face frames for the 6 values of a standard TTS Die_6.
--- Index = die value (what getValue() returns when that face is on top).
--- `normal` points out of that face; `rotation` orients a decal plane to
--- lie flat on the face, facing outward (a decal's default plane faces
--- +Z, so the top face needs rotation {90,0,0} to face +Y, etc.).
---
--- Why not TTS "Custom Dice"? A custom die takes ONE pre-composed texture
--- image (a template with all 6 faces baked in). Our faces are drafted at
--- click-time, and Lua inside TTS cannot composite images - that would
--- need a live image server. Decals are the runtime way to skin a die.
---
--- V2 calibration note: V1 hard-coded positions for a 1-unit die and the
--- decals exploded out around it (Ben's screenshot, 2026-10-22). The
--- built-in Die_6 mesh is much smaller than 1 unit, so placement is now
--- measured from the die's own bounds at runtime (applyFaceDecals below).
-local FACE_FRAMES = {
-    [1] = { normal = { 0,  1,  0 }, rotation = { 90,  0,   0   } }, -- top
-    [6] = { normal = { 0, -1,  0 }, rotation = { -90, 0,   0   } }, -- bottom (opp. 1)
-    [2] = { normal = { 0,  0,  1 }, rotation = { 0,   0,   0   } }, -- front
-    [5] = { normal = { 0,  0, -1 }, rotation = { 0,   180, 0   } }, -- back   (opp. 2)
-    [3] = { normal = { 1,  0,  0 }, rotation = { 0,   90,  0   } }, -- right
-    [4] = { normal = { -1, 0,  0 }, rotation = { 0,   270, 0   } }, -- left   (opp. 3)
+-- Standard d6 rotation values for a Custom_Dice object: the object
+-- rotation at which each value faces up. These tell getValue() which
+-- face is on top, and they match the texture layout the textures were
+-- composed with (opposites sum to 7: 1=+Z, 2=+Y, 3=-X, 4=+X, 5=-Y,
+-- 6=-Z in the die's local space). Verified against real Custom_Dice
+-- save files. If a roll ever announces a different face than the icon
+-- showing on top, THIS table (or the generator's VALUE_TO_CELL map)
+-- is the one place to permute.
+local DICE_ROTATION_VALUES = {
+    { Value = 1, Rotation = { x = -90, y = 0, z = 0    } },
+    { Value = 2, Rotation = { x = 0,   y = 0, z = 0    } },
+    { Value = 3, Rotation = { x = 0,   y = 0, z = -90  } },
+    { Value = 4, Rotation = { x = 0,   y = 0, z = 90   } },
+    { Value = 5, Rotation = { x = 0,   y = 0, z = 180  } },
+    { Value = 6, Rotation = { x = 90,  y = 0, z = 0    } },
 }
 
--- Paint the 6 drafted faces onto a spawned die as decals, sized from
--- the die's own measured bounds so this works whatever scale it is.
-local function applyFaceDecals(die, faces)
-    local bounds = die.getBoundsNormalized()  -- world size, rotation ignored
-    local scale  = die.getScale()
-    -- Convert world size into the die's local units (decals live in
-    -- local space): local size = world size / object scale.
-    local localSize = bounds.x / math.max(scale.x, 0.01)
-    local half = localSize / 2
-
-    for value, face in ipairs(faces) do
-        local f = FACE_FRAMES[value]
-        die.addDecal({
-            name = face.id,
-            url = face.icon_url,
-            position = {
-                f.normal[1] * (half + 0.02),
-                f.normal[2] * (half + 0.02),
-                f.normal[3] * (half + 0.02),
-            },
-            rotation = f.rotation,
-            scale = localSize * 0.96,
-        })
-    end
-
-    log(string.format(
-        "[CozyDice] Die bounds %.2f, local size %.2f - decals applied.",
-        bounds.x, localSize))
-end
-
 local FaceDatabase = nil   -- filled by the GitHub download, or the fallback
+local DiceCatalog  = nil   -- filled by the GitHub download, or the fallback
 local BuiltDice    = {}    -- guid -> { faces = {...}, owner = color }
 
 -- ---------------------------------------------------------------------
@@ -118,6 +76,23 @@ function onLoad()
             end
         end
     end)
+
+    log("[CozyDice] Loading dice catalog from GitHub...")
+    WebRequest.get(CATALOG_URL, function(request)
+        if request.is_error or request.text == nil or request.text == "" then
+            log("[CozyDice] Catalog download failed - using embedded fallback catalog.")
+            DiceCatalog = EMBEDDED_CATALOG
+        else
+            local ok, decoded = pcall(JSON.decode, request.text)
+            if ok and decoded and decoded.dice and #decoded.dice > 0 then
+                DiceCatalog = decoded.dice
+                log("[CozyDice] Dice catalog loaded: " .. #DiceCatalog .. " dice.")
+            else
+                log("[CozyDice] Catalog JSON did not parse - using fallback catalog.")
+                DiceCatalog = EMBEDDED_CATALOG
+            end
+        end
+    end)
 end
 
 -- ---------------------------------------------------------------------
@@ -125,7 +100,7 @@ end
 -- TTS UI handlers receive (player, value, id).
 -- ---------------------------------------------------------------------
 function onRollClicked(player, _, _)
-    if FaceDatabase == nil then
+    if FaceDatabase == nil or DiceCatalog == nil then
         broadcastToColor("The dice workshop is still warming up - try again in a second!",
             player.color, { 0.95, 0.55, 0.45 })
         return
@@ -134,59 +109,44 @@ function onRollClicked(player, _, _)
 end
 
 -- ---------------------------------------------------------------------
--- Composition: pick counts inside the ranges that sum to exactly 6.
--- Start at every minimum, then hand out the remaining sides one at a
--- time to a random pool that still has room under its maximum.
+-- Catalog faces are stored as ids; resolve them against the face
+-- database to get names / values / effects for the die's description
+-- and the roll broadcast. Falls back to a stub if an id is unknown
+-- (e.g. the embedded database is in use and has fewer faces).
 -- ---------------------------------------------------------------------
-local function rollComposition()
-    local counts, total = {}, 0
-    for pool, range in pairs(COMPOSITION) do
-        counts[pool] = range.min
-        total = total + range.min
-    end
-
-    local remaining = DIE_SIDES - total
-    while remaining > 0 do
-        local eligible = {}
-        for pool, range in pairs(COMPOSITION) do
-            if counts[pool] < range.max then table.insert(eligible, pool) end
+local function resolveFaces(entry)
+    local byId = {}
+    if FaceDatabase and FaceDatabase.pools then
+        for poolName, pool in pairs(FaceDatabase.pools) do
+            for _, face in ipairs(pool) do
+                byId[face.id] = {
+                    id = face.id, pool = poolName, name = face.name,
+                    value = face.value, effect = face.effect,
+                }
+            end
         end
-        if #eligible == 0 then break end  -- ranges can't reach 6: stop safely
-        local chosen = eligible[math.random(#eligible)]
-        counts[chosen] = counts[chosen] + 1
-        remaining = remaining - 1
+    end
+    local faces = {}
+    for _, id in ipairs(entry.faces) do
+        table.insert(faces, byId[id] or
+            { id = id, pool = "misses", name = id, value = 0, effect = "" })
+    end
+    return faces
+end
+
+local function countPools(faces)
+    local counts = { misses = 0, attacks = 0, defends = 0, statuses = 0 }
+    for _, face in ipairs(faces) do
+        if counts[face.pool] ~= nil then counts[face.pool] = counts[face.pool] + 1 end
     end
     return counts
-end
-
-local function shuffle(list)
-    for i = #list, 2, -1 do
-        local j = math.random(i)
-        list[i], list[j] = list[j], list[i]
-    end
-    return list
-end
-
--- Pick n distinct faces from one pool (pools have 5, we need at most 3).
-local function pickFaces(poolName, n)
-    if n <= 0 then return {} end
-    local picks, pool = {}, shuffle({ table.unpack(FaceDatabase.pools[poolName]) })
-    for i = 1, math.min(n, #pool) do
-        local face = pool[i]
-        table.insert(picks, {
-            id = face.id, pool = poolName, name = face.name,
-            value = face.value, effect = face.effect,
-            icon_url = GITHUB_RAW_BASE .. face.icon,
-        })
-    end
-    return picks
 end
 
 -- ---------------------------------------------------------------------
 -- Build the die
 -- ---------------------------------------------------------------------
 local function describeFaces(faces)
-    local lines = { "This die was drafted just now:" }
+    local lines = { "Faces on this die (by die value):" }
     for value, face in ipairs(faces) do
         table.insert(lines, string.format("%d. [%s] %s (%s) - %s",
             value, POOL_LABEL[face.pool], face.name, tostring(face.value), face.effect))
@@ -259,16 +219,11 @@ local function getSpawnPosition(player)
 end
 
 function buildCustomDie(player)
-    local counts = rollComposition()
-
-    local faces = {}
-    for _, poolName in ipairs({ "misses", "attacks", "defends", "statuses" }) do
-        for _, face in ipairs(pickFaces(poolName, counts[poolName])) do
-            table.insert(faces, face)
-        end
-    end
-    shuffle(faces)  -- so pool order doesn't predict which value lands where
-
+    -- Pick one of the pre-made dice from the catalog. Each catalog die
+    -- already obeys the composition rules (see the generator script).
+    local entry = DiceCatalog[math.random(#DiceCatalog)]
+    local faces = resolveFaces(entry)  -- faces[i] sits on die value i
+    local counts = countPools(faces)
     local spawnPos = getSpawnPosition(player)
 
     broadcastToColor(string.format(
@@ -276,21 +231,40 @@ function buildCustomDie(player)
         counts.misses, counts.attacks, counts.defends, counts.statuses),
         player.color, { 1, 0.9, 0.6 })
 
-    spawnObject({
-        type = "Die_6",
+    -- Spawn a genuine Custom_Dice object (the "custom die" item type),
+    -- with the die's baked texture served from this GitHub repo.
+    spawnObjectData({
+        data = {
+            Name = "Custom_Dice",
+            Nickname = "Cozy Die - " .. playerDisplayName(player),
+            Description = describeFaces(faces),
+            GMNotes = JSON.encode(faces),
+            ColorDiffuse = { r = 1, g = 1, b = 1 },
+            Locked = false,
+            Grid = true,
+            Snap = true,
+            Autoraise = true,
+            Sticky = true,
+            Tooltip = true,
+            DragSelectable = true,
+            MeasureMovement = false,
+            GridProjection = false,
+            HideWhenFaceDown = false,
+            IgnoreFoW = false,
+            Hands = false,
+            CustomImage = {
+                ImageURL = GITHUB_RAW_BASE .. entry.texture,
+                ImageSecondaryURL = "",
+                WidthScale = 0,
+                CustomDice = { Type = 1 },  -- 1 = six-sided
+            },
+            RotationValues = DICE_ROTATION_VALUES,
+        },
         position = spawnPos,
         rotation = { 0, math.random(360), 0 },
-        scale = { 1.5, 1.5, 1.5 },  -- chunkier die, so the face icons read well
+        scale = { 1.4, 1.4, 1.4 },  -- chunkier die, so the face icons read well
         sound = true,
         callback_function = function(die)
-            -- faces[i] is the face that reads as value i once at rest.
-            die.setName("Cozy Die - " .. playerDisplayName(player))
-            die.setDescription(describeFaces(faces))
-            die.setGMNotes(JSON.encode(faces))
-            die.setColorTint({ 1, 0.99, 0.95 })
-
-            applyFaceDecals(die, faces)
-
             BuiltDice[die.getGUID()] = { faces = faces, owner = player.color,
                                          ownerName = playerDisplayName(player) }
             die.randomize(player.color)
@@ -332,6 +306,19 @@ end
 -- Roll button still works before GitHub is set up, or if it is down.
 -- The GitHub file is the real database - keep new faces there.
 -- =====================================================================
+-- Fallback catalog (first two dice) if the GitHub catalog can't load.
+-- Faces are ids in value order 1..6, matching data/dice_catalog.json.
+EMBEDDED_CATALOG = {
+    { id = "dice_01", texture = "dice_01.png",
+      faces = { "status_poison_shroom", "defend_knitted_blanket",
+                "defend_pot_lid", "miss_tangled_yarn",
+                "status_burn", "attack_paw_swipe" } },
+    { id = "dice_02", texture = "dice_02.png",
+      faces = { "defend_pot_lid", "status_bloom",
+                "defend_knitted_blanket", "defend_stone_wall",
+                "attack_bow", "miss_cloud" } },
+}
+
 EMBEDDED_DATABASE = {
     version = 0,
     pools = {
