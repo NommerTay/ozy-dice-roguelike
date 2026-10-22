@@ -11,11 +11,11 @@
       },
       "faces": [
         "status_burn",
-        "block_2",
-        "block_3",
-        "miss_x3",
+        "block_1",
+        "negate",
+        "break",
         "status_corrupt",
-        "hit_5"
+        "crit"
       ]
     },
     {
@@ -28,12 +28,12 @@
         "statuses": 1
       },
       "faces": [
-        "block_2",
+        "block_1",
         "status_corrupt",
-        "block_3",
+        "negate",
         "miss",
         "block_1",
-        "hit_2"
+        "hit_1"
       ]
     },
     {
@@ -46,12 +46,12 @@
         "statuses": 2
       },
       "faces": [
-        "hit_5",
-        "hit_1",
+        "crit",
+        "block_1",
         "status_daze",
-        "status_poison",
-        "miss",
-        "block_3"
+        "hit_1",
+        "status_recoup",
+        "miss"
       ]
     },
     {
@@ -64,12 +64,12 @@
         "statuses": 1
       },
       "faces": [
-        "status_charge",
+        "crit",
         "hit_1",
-        "block_5",
-        "chip",
-        "crit_x2",
-        "block_2"
+        "miss",
+        "status_poison",
+        "block_1",
+        "negate"
       ]
     },
     {
@@ -82,12 +82,12 @@
         "statuses": 0
       },
       "faces": [
-        "hit_4",
-        "block_4",
         "block_1",
-        "crit_x2",
-        "break",
-        "block_5"
+        "negate",
+        "hit_1",
+        "block_1",
+        "crit",
+        "chip"
       ]
     },
     {
@@ -100,12 +100,12 @@
         "statuses": 1
       },
       "faces": [
-        "status_bless",
+        "crit",
+        "status_recoup",
         "hit_1",
-        "hit_3",
+        "block_1",
         "miss",
-        "crit_x2",
-        "block_1"
+        "crit"
       ]
     },
     {
@@ -118,12 +118,12 @@
         "statuses": 0
       },
       "faces": [
-        "hit_5",
-        "hit_4",
-        "hit_2",
-        "chip",
-        "block_4",
-        "block_1"
+        "negate",
+        "block_1",
+        "crit",
+        "hit_1",
+        "crit",
+        "break"
       ]
     },
     {
@@ -136,12 +136,12 @@
         "statuses": 2
       },
       "faces": [
-        "status_recoup",
-        "hit_1",
-        "negate",
+        "miss",
         "status_burn",
-        "break",
-        "chip"
+        "negate",
+        "status_bleed",
+        "crit",
+        "break"
       ]
     },
     {
@@ -154,12 +154,12 @@
         "statuses": 1
       },
       "faces": [
-        "miss_x3",
-        "status_burn",
-        "block_1",
-        "miss",
+        "chip",
         "negate",
-        "hit_4"
+        "block_1",
+        "crit",
+        "break",
+        "status_daze"
       ]
     },
     {
@@ -173,11 +173,11 @@
       },
       "faces": [
         "chip",
-        "block_4",
+        "crit",
+        "negate",
         "block_1",
-        "hit_4",
-        "miss_x3",
-        "block_3"
+        "negate",
+        "break"
       ]
     },
     {
@@ -190,12 +190,12 @@
         "statuses": 1
       },
       "faces": [
-        "break",
-        "hit_5",
-        "miss_x3",
-        "status_charge",
-        "hit_3",
-        "block_4"
+        "crit",
+        "chip",
+        "hit_1",
+        "miss",
+        "negate",
+        "status_bless"
       ]
     },
     {
@@ -208,12 +208,12 @@
         "statuses": 0
       },
       "faces": [
-        "hit_5",
-        "block_4",
-        "hit_4",
-        "block_3",
+        "hit_1",
+        "negate",
+        "crit",
         "break",
-        "miss_x2"
+        "block_1",
+        "chip"
       ]
     },
     {
@@ -226,12 +226,12 @@
         "statuses": 0
       },
       "faces": [
+        "chip",
         "crit",
-        "crit_x2",
-        "miss_x3",
-        "hit_5",
-        "break",
-        "block_2"
+        "crit",
+        "negate",
+        "hit_1",
+        "break"
       ]
     }
   ]

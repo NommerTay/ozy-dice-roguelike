@@ -77,9 +77,24 @@ def find_icon(filename: str) -> Path:
     return hits[0]
 
 
+# Generated dice only ever carry the BASE form of each dice type
+# (Ben, 2026-10-22): no Miss x2/x3, no Hit/Block +2..+5, no Crit x2.
+# The variations stay in the database for the drafting/collection game.
+BASE_FACE_IDS = {
+    "miss", "chip", "break",          # misses: base Miss, Chip, Break
+    "hit_1", "crit",                   # attacks: base Hit (+1), base Crit
+    "block_1", "negate",               # defends: base Block (+1), Negate
+    # statuses have no variations - all 9 are base forms
+}
+
+
 def main():
     db = json.loads(DB_PATH.read_text())
-    pools = {name: db["pools"][name] for name in POOL_ORDER}
+    pools = {
+        name: [f for f in db["pools"][name]
+               if name == "statuses" or f["id"] in BASE_FACE_IDS]
+        for name in POOL_ORDER
+    }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     rng = random.Random(20261022)  # fixed seed: regenerating is reproducible
@@ -88,7 +103,12 @@ def main():
     for i, comp in enumerate(legal_compositions(), start=1):
         faces = []  # face dicts, will be assigned to values 1..6 after shuffle
         for pool in POOL_ORDER:
-            picks = rng.sample(pools[pool], comp[pool])
+            # Prefer distinct faces; a die may repeat a base face when a
+            # composition asks for more of a pool than it has base types.
+            pool_faces = pools[pool]
+            picks = rng.sample(pool_faces, min(comp[pool], len(pool_faces)))
+            while len(picks) < comp[pool]:
+                picks.append(rng.choice(pool_faces))
             faces.extend(picks)
         rng.shuffle(faces)  # faces[v-1] sits on die value v
 

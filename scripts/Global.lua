@@ -290,11 +290,11 @@ end
 -- Faces are ids in value order 1..6, matching data/dice_catalog.json.
 EMBEDDED_CATALOG = {
     { id = "dice_01", texture = "dice_01.png",
-      faces = { "status_burn", "block_2", "block_3",
-                "miss_x3", "status_corrupt", "hit_5" } },
+      faces = { "status_burn", "block_1", "negate",
+                "break", "status_corrupt", "crit" } },
     { id = "dice_02", texture = "dice_02.png",
-      faces = { "block_2", "status_corrupt", "block_3",
-                "miss", "block_1", "hit_2" } },
+      faces = { "block_1", "status_corrupt", "negate",
+                "miss", "block_1", "hit_1" } },
 }
 
 EMBEDDED_DATABASE = {
