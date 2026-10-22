@@ -10,12 +10,12 @@
         "statuses": 2
       },
       "faces": [
-        "status_poison_shroom",
-        "defend_knitted_blanket",
-        "defend_pot_lid",
-        "miss_tangled_yarn",
         "status_burn",
-        "attack_paw_swipe"
+        "block_2",
+        "block_3",
+        "miss_x3",
+        "status_corrupt",
+        "hit_5"
       ]
     },
     {
@@ -28,12 +28,12 @@
         "statuses": 1
       },
       "faces": [
-        "defend_pot_lid",
-        "status_bloom",
-        "defend_knitted_blanket",
-        "defend_stone_wall",
-        "attack_bow",
-        "miss_cloud"
+        "block_2",
+        "status_corrupt",
+        "block_3",
+        "miss",
+        "block_1",
+        "hit_2"
       ]
     },
     {
@@ -46,12 +46,12 @@
         "statuses": 2
       },
       "faces": [
-        "defend_wooden_shield",
-        "miss_cracked_egg",
-        "status_bloom",
-        "status_poison_shroom",
-        "attack_paw_swipe",
-        "attack_acorn_sling"
+        "hit_5",
+        "hit_1",
+        "status_daze",
+        "status_poison",
+        "miss",
+        "block_3"
       ]
     },
     {
@@ -64,12 +64,12 @@
         "statuses": 1
       },
       "faces": [
-        "status_poison_shroom",
-        "defend_stone_wall",
-        "miss_cloud",
-        "attack_paw_swipe",
-        "attack_bow",
-        "defend_wooden_shield"
+        "status_charge",
+        "hit_1",
+        "block_5",
+        "chip",
+        "crit_x2",
+        "block_2"
       ]
     },
     {
@@ -82,12 +82,12 @@
         "statuses": 0
       },
       "faces": [
-        "attack_acorn_sling",
-        "defend_stone_wall",
-        "defend_wooden_shield",
-        "attack_paw_swipe",
-        "miss_dropped_mug",
-        "defend_knitted_blanket"
+        "hit_4",
+        "block_4",
+        "block_1",
+        "crit_x2",
+        "break",
+        "block_5"
       ]
     },
     {
@@ -100,12 +100,12 @@
         "statuses": 1
       },
       "faces": [
-        "attack_ember",
-        "status_bloom",
-        "attack_paw_swipe",
-        "defend_pot_lid",
-        "miss_cloud",
-        "attack_wooden_sword"
+        "status_bless",
+        "hit_1",
+        "hit_3",
+        "miss",
+        "crit_x2",
+        "block_1"
       ]
     },
     {
@@ -118,12 +118,12 @@
         "statuses": 0
       },
       "faces": [
-        "defend_umbrella",
-        "attack_paw_swipe",
-        "defend_wooden_shield",
-        "attack_bow",
-        "miss_cracked_egg",
-        "attack_acorn_sling"
+        "hit_5",
+        "hit_4",
+        "hit_2",
+        "chip",
+        "block_4",
+        "block_1"
       ]
     },
     {
@@ -136,12 +136,12 @@
         "statuses": 2
       },
       "faces": [
-        "defend_knitted_blanket",
-        "status_chill",
-        "miss_cracked_egg",
-        "attack_wooden_sword",
-        "miss_cloud",
-        "status_bloom"
+        "status_recoup",
+        "hit_1",
+        "negate",
+        "status_burn",
+        "break",
+        "chip"
       ]
     },
     {
@@ -154,12 +154,12 @@
         "statuses": 1
       },
       "faces": [
-        "defend_umbrella",
-        "attack_ember",
-        "miss_butterfly",
-        "miss_cloud",
-        "defend_wooden_shield",
-        "status_poison_shroom"
+        "miss_x3",
+        "status_burn",
+        "block_1",
+        "miss",
+        "negate",
+        "hit_4"
       ]
     },
     {
@@ -172,12 +172,12 @@
         "statuses": 0
       },
       "faces": [
-        "miss_dropped_mug",
-        "defend_umbrella",
-        "miss_cloud",
-        "defend_pot_lid",
-        "defend_knitted_blanket",
-        "attack_acorn_sling"
+        "chip",
+        "block_4",
+        "block_1",
+        "hit_4",
+        "miss_x3",
+        "block_3"
       ]
     },
     {
@@ -190,12 +190,12 @@
         "statuses": 1
       },
       "faces": [
-        "miss_tangled_yarn",
-        "attack_paw_swipe",
-        "attack_ember",
-        "status_burn",
-        "defend_pot_lid",
-        "miss_dropped_mug"
+        "break",
+        "hit_5",
+        "miss_x3",
+        "status_charge",
+        "hit_3",
+        "block_4"
       ]
     },
     {
@@ -208,12 +208,12 @@
         "statuses": 0
       },
       "faces": [
-        "attack_paw_swipe",
-        "miss_dropped_mug",
-        "attack_wooden_sword",
-        "miss_cracked_egg",
-        "defend_stone_wall",
-        "defend_pot_lid"
+        "hit_5",
+        "block_4",
+        "hit_4",
+        "block_3",
+        "break",
+        "miss_x2"
       ]
     },
     {
@@ -226,12 +226,12 @@
         "statuses": 0
       },
       "faces": [
-        "attack_bow",
-        "defend_stone_wall",
-        "attack_paw_swipe",
-        "miss_dropped_mug",
-        "attack_wooden_sword",
-        "miss_butterfly"
+        "crit",
+        "crit_x2",
+        "miss_x3",
+        "hit_5",
+        "break",
+        "block_2"
       ]
     }
   ]
