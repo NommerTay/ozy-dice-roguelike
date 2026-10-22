@@ -520,6 +520,11 @@ local STARTING_DICE_DEFS = {
     event_str = { label = "Starting Event Die - STR", texture = "starting_event_str.png", stat = "STR" },
 }
 
+-- Spawned starting dice sit ON their printed slot: the slot is
+-- ~0.35 world units wide, so the dice spawn at this scale (the
+-- Roll-built dice use 1.4) and at rest height, not dropped.
+local STARTING_DIE_SCALE = 0.4
+
 -- Event die faces in value order: blank, 1 dot, 1 dot, 2 dots,
 -- 1 dot, blank (matches the painted textures).
 local function eventDieFaces(stat)
@@ -574,7 +579,8 @@ function spawnStartingDie(params)
     local scale = mat.getScale()
     local localPos = {
         (def.u - 0.5) * (bounds.size.x / scale.x),
-        (bounds.size.y / scale.y) / 2 + 1.2,
+        (bounds.size.y / scale.y) / 2
+            + (STARTING_DIE_SCALE / 2) / scale.y + 0.03,
         (def.v - 0.5) * (bounds.size.z / scale.z),
     }
     local worldPos = mat.positionToWorld(localPos)
@@ -587,7 +593,7 @@ function spawnStartingDie(params)
         type = "Custom_Dice",
         position = worldPos,
         rotation = { 0, math.random(360), 0 },
-        scale = { 1.4, 1.4, 1.4 },
+        scale = { STARTING_DIE_SCALE, STARTING_DIE_SCALE, STARTING_DIE_SCALE },
         sound = true,
         callback_function = function(spawned)
             spawned.setName(dieName .. " - " .. ownerName)
